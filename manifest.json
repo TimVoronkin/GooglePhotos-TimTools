@@ -1,0 +1,50 @@
+{
+    "manifest_version": 3,
+    "name": "Google Photos Tim Tools",
+    "version": "0.1",
+    "description": "Combined tools for Google Photos: Timeline Button & KML Export",
+    "icons": {
+        "128": "assets/GooglePhotos_TimTools_logo128.png"
+    },
+    "permissions": [
+        "clipboardWrite",
+        "tabs"
+    ],
+    "background": {
+        "service_worker": "src/background/background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://photos.google.com/*"
+            ],
+            "js": [
+                "src/content/kml_export.js"
+            ],
+            "css": [
+                "src/content/styles.css"
+            ],
+            "run_at": "document_start"
+        },
+        {
+            "matches": [
+                "*://photos.google.com/*"
+            ],
+            "js": [
+                "src/content/tims_button.js",
+                "src/content/date_input.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "assets/*"
+            ],
+            "matches": [
+                "*://photos.google.com/*"
+            ]
+        }
+    ]
+}

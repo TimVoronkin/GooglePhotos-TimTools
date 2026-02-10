@@ -1,0 +1,38 @@
+/* Button Container aligned with Google Photos buttons */
+.gp-kml-export-container {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin-right: 8px; /* Spacing */
+}
+
+/* Button Reset & Style */
+.gp-kml-export-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 12px;
+    border-radius: 50%; /* Circle hover effect */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #444746; /* GP Icon Color */
+    transition: background-color 0.15s;
+    outline: none;
+}
+
+.gp-kml-export-btn:hover {
+    background-color: rgba(68, 71, 70, 0.08); /* GP Hover Color */
+    color: #1f1f1f;
+}
+
+.gp-kml-export-btn svg {
+    fill: currentColor;
+    width: 24px;
+    height: 24px;
+}
+
+/* Tooltip (Simple generic implementation, can be improved to match GP later) */
+.gp-kml-export-btn[title] {
+    position: relative;
+}
