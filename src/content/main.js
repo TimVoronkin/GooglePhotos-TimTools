@@ -33,6 +33,13 @@ window.TimTools = window.TimTools || {};
             }
         }
 
+        if (settings.enableDeleteShortcut) {
+            if (Modules.DeleteShortcut) {
+                Modules.DeleteShortcut.init();
+                console.log('[TimTools] Delete Shortcut module loaded.');
+            }
+        }
+
         if (settings.enableKmlExport) {
             // KML Controller is nested
             if (Modules.KmlExport && Modules.KmlExport.Controller) {

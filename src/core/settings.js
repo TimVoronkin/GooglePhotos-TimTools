@@ -5,6 +5,7 @@ window.TimTools = window.TimTools || {};
         enableUpButton: true,
         upButtonClosePhoto: false,
         enableDateSearch: true,
+        enableDeleteShortcut: true,
         enableKmlExport: true,
         kmlCreateSubfolder: true,
         kmlFolderName: "GooglePhotosExports",

@@ -9,6 +9,7 @@ const kmlSection = document.getElementById('kml-section');
 const folderInputWrapper = document.getElementById('folderInputWrapper');
 const enableUpButton = document.getElementById('enableUpButton');
 const enableDateSearch = document.getElementById('enableDateSearch');
+const enableDeleteShortcut = document.getElementById('enableDeleteShortcut');
 const upButtonClosePhoto = document.getElementById('upButtonClosePhoto');
 const upButtonSubSection = document.getElementById('up-button-sub-section');
 
@@ -20,6 +21,7 @@ const allInputs = [
     enableKmlExport,
     enableUpButton,
     enableDateSearch,
+    enableDeleteShortcut,
     upButtonClosePhoto
 ];
 
@@ -54,6 +56,7 @@ function restoreOptions() {
         enableUpButton.checked = items.enableUpButton;
         upButtonClosePhoto.checked = items.upButtonClosePhoto;
         enableDateSearch.checked = items.enableDateSearch;
+        enableDeleteShortcut.checked = items.enableDeleteShortcut;
         enableKmlExport.checked = items.enableKmlExport;
 
         kmlCreateSubfolder.checked = items.kmlCreateSubfolder !== false;
@@ -112,6 +115,7 @@ function saveOptions() {
         enableUpButton: enableUpButton.checked,
         upButtonClosePhoto: upButtonClosePhoto.checked,
         enableDateSearch: enableDateSearch.checked,
+        enableDeleteShortcut: enableDeleteShortcut.checked,
         enableKmlExport: enableKmlExport.checked,
         kmlCreateSubfolder: kmlCreateSubfolder.checked,
         kmlFolderName: kmlFolderName.value,
