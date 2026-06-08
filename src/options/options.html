@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Settings - Tim Tools for Google Photos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1><img src="../../assets/icons/logo128.png" alt="Icon" style="width: 32px; height: 32px;"> Google Photos Tim
+            Tools - Settings</h1>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>Up Button</h2>
+                <div class="option-row">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableUpLink">
+                        <span class="slider"></span>
+                        <span class="label-text">Enable</span>
+                    </label>
+                    <img src="../../assets/icons/up_button.svg" class="option-icon" title="Up Button Icon">
+                </div>
+            </div>
+
+            <div class="section-header">
+                <h2>Date Search</h2>
+                <div class="option-row">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableDateSearch">
+                        <span class="slider"></span>
+                        <span class="label-text">Enable</span>
+                    </label>
+                    <img src="../../assets/icons/calendar.png" class="option-icon" title="Calendar Icon">
+                </div>
+            </div>
+
+            <div class="section-header">
+                <h2>KML Export</h2>
+                <div class="option-row">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableKmlExport">
+                        <span class="slider"></span>
+                        <span class="label-text">Enable</span>
+                    </label>
+                    <img src="../../assets/icons/timeline-24.png" class="option-icon" title="KML Icon">
+                </div>
+            </div>
+
+            <div class="sub-section" id="kml-section">
+                <h3>Export Configuration</h3>
+
+                <div class="option-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="kmlCreateSubfolder">
+                        Create subfolder
+                    </label>
+                </div>
+
+                <!-- Unified Path Preview and Input -->
+                <div class="path-config-container">
+                    <span class="path-segment">\Downloads\</span>
+
+                    <div class="input-wrapper" id="folderInputWrapper">
+                        <input type="text" id="kmlFolderName" placeholder="Folder" class="inline-input">
+                        <span class="path-separator">\</span>
+                    </div>
+
+                    <input type="text" id="kmlFilePrefix" placeholder="Prefix_" class="inline-input">
+                    <span class="path-segment">YYYY-MM-DD.kml</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="../core/settings.js"></script>
+    <script src="options.js"></script>
+</body>
+
+</html>

@@ -1,17 +1,24 @@
 {
     "manifest_version": 3,
     "name": "Google Photos Tim Tools",
-    "version": "0.1",
-    "description": "Combined tools for Google Photos: Timeline Button & KML Export",
+    "version": "0.2",
+    "description": "Combined tools for Google Photos: Timeline Button, Date Search & KML Export",
     "icons": {
-        "128": "assets/GooglePhotos_TimTools_logo128.png"
+        "128": "assets/icons/logo128.png"
     },
     "permissions": [
+        "storage",
+        "downloads",
         "clipboardWrite",
         "tabs"
     ],
+    "action": {},
+    "options_ui": {
+        "page": "src/options/options.html",
+        "open_in_tab": true
+    },
     "background": {
-        "service_worker": "src/background/background.js"
+        "service_worker": "src/background/service_worker.js"
     },
     "content_scripts": [
         {
@@ -19,20 +26,18 @@
                 "*://photos.google.com/*"
             ],
             "js": [
-                "src/content/kml_export.js"
+                "src/core/settings.js",
+                "src/core/dom_utils.js",
+                "src/content/modules/back_button.js",
+                "src/content/modules/date_picker.js",
+                "src/content/modules/kml_export/ui.js",
+                "src/content/modules/kml_export/extractor.js",
+                "src/content/modules/kml_export/generator.js",
+                "src/content/modules/kml_export/main.js",
+                "src/content/main.js"
             ],
             "css": [
                 "src/content/styles.css"
-            ],
-            "run_at": "document_start"
-        },
-        {
-            "matches": [
-                "*://photos.google.com/*"
-            ],
-            "js": [
-                "src/content/tims_button.js",
-                "src/content/date_input.js"
             ],
             "run_at": "document_idle"
         }
@@ -40,7 +45,8 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "assets/*"
+                "assets/icons/*",
+                "src/options/options.html"
             ],
             "matches": [
                 "*://photos.google.com/*"
