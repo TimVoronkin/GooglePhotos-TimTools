@@ -10,32 +10,32 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
     const Extractor = {
         run: async function (masterId) {
-            console.log('[TimMapExport] Extraction Mode Started. MasterID:', masterId);
+            console.log('[TimTools] KmlExport: Extraction Mode Started. MasterID:', masterId);
 
             const waitFor = window.TimTools.DOM.waitFor;
 
             try {
                 // 1. Wait for and Click Info Button
-                console.log('[TimMapExport] Waiting for info button:', INFO_BUTTON_SELECTOR);
+                console.log('[TimTools] KmlExport: Waiting for info button:', INFO_BUTTON_SELECTOR);
                 const infoBtn = await waitFor(INFO_BUTTON_SELECTOR);
-                console.log('[TimMapExport] Info button found, checking map link...');
+                console.log('[TimTools] KmlExport: Info button found, checking map link...');
 
                 let mapLink = document.querySelector(MAP_LINK_SELECTOR);
                 if (!mapLink) {
-                    console.log('[TimMapExport] Map link not found, clicking info button...');
+                    console.log('[TimTools] KmlExport: Map link not found, clicking info button...');
                     infoBtn.click();
                     // Reduced timeout
                     try {
                         mapLink = await waitFor(MAP_LINK_SELECTOR, 4000);
                     } catch (e) {
-                        console.warn('[TimMapExport] Map link wait timeout.');
+                        console.warn('[TimTools] KmlExport: Map link wait timeout.');
                     }
                 }
 
                 if (!mapLink) {
                     throw new Error('Map link not found (no geotag?)');
                 }
-                console.log('[TimMapExport] Map link found:', mapLink.href);
+                console.log('[TimTools] KmlExport: Map link found:', mapLink.href);
 
                 // 2. Extract Data
                 const href = mapLink.href;
@@ -46,7 +46,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                 }
 
                 const coords = match[1];
-                console.log('[TimMapExport] Coords:', coords);
+                console.log('[TimTools] KmlExport: Coords:', coords);
 
                 // Filename
                 let filename = 'Unknown';
@@ -57,7 +57,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                         if (nameDiv) filename = nameDiv.textContent.trim();
                     }
                 } catch (e) { }
-                console.log('[TimMapExport] Filename:', filename);
+                console.log('[TimTools] KmlExport: Filename:', filename);
 
                 // Date
                 let timestamp = Date.now();
@@ -91,12 +91,12 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                 } catch (e) {
                     console.warn('Date extraction failed', e);
                 }
-                console.log('[TimMapExport] Timestamp:', timestamp, new Date(timestamp));
+                console.log('[TimTools] KmlExport: Timestamp:', timestamp, new Date(timestamp));
 
                 // 3. Send back
                 if (!masterId) console.warn('No masterId provided!');
 
-                console.log('[TimMapExport] Sending GP_KML_DATA to Master:', masterId);
+                console.log('[TimTools] KmlExport: Sending GP_KML_DATA to Master:', masterId);
                 chrome.runtime.sendMessage({
                     type: 'GP_KML_DATA',
                     payload: {
@@ -108,9 +108,9 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                     }
                 }, (response) => {
                     if (chrome.runtime.lastError) {
-                        console.error('[TimMapExport] SendMessage Error:', chrome.runtime.lastError);
+                        console.error('[TimTools] KmlExport: SendMessage Error:', chrome.runtime.lastError);
                     } else {
-                        console.log('[TimMapExport] Message sent. Response:', response);
+                        console.log('[TimTools] KmlExport: Message sent. Response:', response);
                     }
                 });
 

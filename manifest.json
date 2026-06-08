@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Google Photos Tim Tools",
   "version": "0.3",
-  "description": "Combined tools for Google Photos: Timeline Button, Date Search & KML Export",
+  "description": "Combined tools for Google Photos: Up Button, Date Search & KML Export",
   "icons": {
     "128": "assets/icons/logo128.png"
   },
@@ -21,8 +21,8 @@
       "js": [
         "src/core/settings.js",
         "src/core/dom_utils.js",
-        "src/content/modules/back_button.js",
-        "src/content/modules/date_picker.js",
+        "src/content/modules/up_button.js",
+        "src/content/modules/date_search.js",
         "src/content/modules/kml_export/ui.js",
         "src/content/modules/kml_export/extractor.js",
         "src/content/modules/kml_export/generator.js",

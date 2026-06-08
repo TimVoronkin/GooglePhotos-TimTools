@@ -2,8 +2,8 @@ window.TimTools = window.TimTools || {};
 
 (function () {
     const DEFAULTS = {
-        enableUpLink: true,
-        upLinkClosePhoto: false,
+        enableUpButton: true,
+        upButtonClosePhoto: false,
         enableDateSearch: true,
         enableKmlExport: true,
         kmlCreateSubfolder: true,

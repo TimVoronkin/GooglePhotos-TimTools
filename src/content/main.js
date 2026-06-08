@@ -17,19 +17,19 @@ window.TimTools = window.TimTools || {};
         const settings = await Settings.getAll();
         console.log('[TimTools] Settings loaded:', settings);
 
-        if (settings.enableUpLink) {
-            if (Modules.BackButton) {
-                Modules.BackButton.init();
-                console.log('[TimTools] Back Button module loaded.');
+        if (settings.enableUpButton) {
+            if (Modules.UpButton) {
+                Modules.UpButton.init();
+                console.log('[TimTools] Up Button module loaded.');
             } else {
-                console.error('[TimTools] Back Button module missing!');
+                console.error('[TimTools] Up Button module missing!');
             }
         }
 
         if (settings.enableDateSearch) {
-            if (Modules.DatePicker) {
-                Modules.DatePicker.init();
-                console.log('[TimTools] Date Picker module loaded.');
+            if (Modules.DateSearch) {
+                Modules.DateSearch.init();
+                console.log('[TimTools] Date Search module loaded.');
             }
         }
 

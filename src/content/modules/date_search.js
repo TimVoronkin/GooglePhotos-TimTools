@@ -256,7 +256,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         }
     };
 
-    const DatePicker = {
+    const DateSearch = {
         init: function () {
             this.observer = new MutationObserver(() => {
                 this.injectButton();
@@ -311,5 +311,5 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         }
     };
 
-    window.TimTools.Modules.DatePicker = DatePicker;
+    window.TimTools.Modules.DateSearch = DateSearch;
 })();

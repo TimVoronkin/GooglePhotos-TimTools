@@ -2,16 +2,16 @@ window.TimTools = window.TimTools || {};
 window.TimTools.Modules = window.TimTools.Modules || {};
 
 (function () {
-    const BackButton = {
+    const UpButton = {
         init: function () {
-            console.log('[TimTools] BackButton: Init');
+            console.log('[TimTools] UpButton: Init');
             let lastUrl = location.href;
             
             // 1. Observe child mutations and attribute (class/style) changes for visibility toggles
             new MutationObserver(() => {
                 if (location.href !== lastUrl) {
                     lastUrl = location.href;
-                    console.log('[TimTools] BackButton: URL changed to', lastUrl);
+                    console.log('[TimTools] UpButton: URL changed to', lastUrl);
                 }
                 this.checkAndAddButton();
             }).observe(document, { 
@@ -33,7 +33,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             var url = window.location.href;
             var match = url.match(/photos.google.com\/(.+\/)?photo\//);
             var isValidContext = match && match[1] && !match[1].startsWith('photo/');
-            var existingButton = document.getElementById('show-in-timeline-btn');
+            var existingButton = document.getElementById('up-button');
             
             // Check if the button is attached to the DOM and belongs to a visible container
             let isAttachedAndVisible = false;
@@ -50,7 +50,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             if (isValidContext) {
                 if (!isAttachedAndVisible) {
                     if (existingButton) {
-                        console.log('[TimTools] BackButton: Removing button from hidden/detached container.');
+                        console.log('[TimTools] UpButton: Removing button from hidden/detached container.');
                         existingButton.remove();
                     }
                     
@@ -75,13 +75,13 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     }
 
                     if (targetContainer) {
-                        console.log('[TimTools] BackButton: Target container found. Injecting.');
+                        console.log('[TimTools] UpButton: Target container found. Injecting.');
                         this.injectButton(targetContainer);
                     }
                 }
             } else {
                 if (existingButton) {
-                    console.log('[TimTools] BackButton: Invalid context. Removing button.');
+                    console.log('[TimTools] UpButton: Invalid context. Removing button.');
                     existingButton.remove();
                 }
             }
@@ -89,8 +89,8 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
         injectButton: function (container) {
             var button = document.createElement('button');
-            button.id = 'show-in-timeline-btn';
-            button.title = 'Show in timeline';
+            button.id = 'up-button';
+            button.title = 'Up Button';
             
             // Layout and styling to blend in with Google Photos top header buttons
             button.style.position = 'relative';
@@ -131,8 +131,8 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 // Get setting dynamically
                 const settings = await window.TimTools.Settings.getAll();
 
-                if (settings.upLinkClosePhoto) {
-                    console.log('[TimTools] BackButton: Pushing history state to', newUrl);
+                if (settings.upButtonClosePhoto) {
+                    console.log('[TimTools] UpButton: Pushing history state to', newUrl);
                     
                     // 1. Change the address bar to the timeline photo URL without reloading
                     history.pushState(null, '', newUrl);
@@ -141,7 +141,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     const nativeBackLink = container.querySelector('a[jsname="hSRGPd"]');
                     if (nativeBackLink) {
                         nativeBackLink.setAttribute('href', './');
-                        console.log('[TimTools] BackButton: Triggering click on native back link.');
+                        console.log('[TimTools] UpButton: Triggering click on native back link.');
                         nativeBackLink.click();
                     } else {
                         // Fallback: click the button wrapper if anchor is not found
@@ -151,7 +151,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                         }
                     }
                 } else {
-                    console.log('[TimTools] BackButton: Navigating to timeline photo URL:', newUrl);
+                    console.log('[TimTools] UpButton: Navigating to timeline photo URL:', newUrl);
                     window.location.href = newUrl;
                 }
             });
@@ -159,13 +159,13 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             // Insert as the second child (right after the back button container)
             if (container.children.length > 1) {
                 container.insertBefore(button, container.children[1]);
-                console.log('[TimTools] BackButton: Injected button as second child in container.');
+                console.log('[TimTools] UpButton: Injected button as second child in container.');
             } else {
                 container.appendChild(button);
-                console.log('[TimTools] BackButton: Appended button to container.');
+                console.log('[TimTools] UpButton: Appended button to container.');
             }
         }
     };
 
-    window.TimTools.Modules.BackButton = BackButton;
+    window.TimTools.Modules.UpButton = UpButton;
 })();

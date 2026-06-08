@@ -7,10 +7,10 @@ const kmlFilePrefix = document.getElementById('kmlFilePrefix');
 const enableKmlExport = document.getElementById('enableKmlExport');
 const kmlSection = document.getElementById('kml-section');
 const folderInputWrapper = document.getElementById('folderInputWrapper');
-const enableUpLink = document.getElementById('enableUpLink');
+const enableUpButton = document.getElementById('enableUpButton');
 const enableDateSearch = document.getElementById('enableDateSearch');
-const upLinkClosePhoto = document.getElementById('upLinkClosePhoto');
-const uplinkSubSection = document.getElementById('uplink-sub-section');
+const upButtonClosePhoto = document.getElementById('upButtonClosePhoto');
+const upButtonSubSection = document.getElementById('up-button-sub-section');
 
 // Elements requiring auto-save
 const allInputs = [
@@ -18,9 +18,9 @@ const allInputs = [
     kmlFolderName,
     kmlFilePrefix,
     enableKmlExport,
-    enableUpLink,
+    enableUpButton,
     enableDateSearch,
-    upLinkClosePhoto
+    upButtonClosePhoto
 ];
 
 // Events
@@ -51,8 +51,8 @@ function restoreOptions() {
     }
 
     window.TimTools.Settings.getAll().then(items => {
-        enableUpLink.checked = items.enableUpLink;
-        upLinkClosePhoto.checked = items.upLinkClosePhoto;
+        enableUpButton.checked = items.enableUpButton;
+        upButtonClosePhoto.checked = items.upButtonClosePhoto;
         enableDateSearch.checked = items.enableDateSearch;
         enableKmlExport.checked = items.enableKmlExport;
 
@@ -65,11 +65,11 @@ function restoreOptions() {
 }
 
 function updateUI() {
-    // Toggle UpLink Section
-    if (enableUpLink.checked) {
-        uplinkSubSection.classList.add('visible');
+    // Toggle Up Button Section
+    if (enableUpButton.checked) {
+        upButtonSubSection.classList.add('visible');
     } else {
-        uplinkSubSection.classList.remove('visible');
+        upButtonSubSection.classList.remove('visible');
     }
 
     // Toggle KML Section
@@ -109,8 +109,8 @@ function adjustInputWidth(input) {
 
 function saveOptions() {
     window.TimTools.Settings.set({
-        enableUpLink: enableUpLink.checked,
-        upLinkClosePhoto: upLinkClosePhoto.checked,
+        enableUpButton: enableUpButton.checked,
+        upButtonClosePhoto: upButtonClosePhoto.checked,
         enableDateSearch: enableDateSearch.checked,
         enableKmlExport: enableKmlExport.checked,
         kmlCreateSubfolder: kmlCreateSubfolder.checked,
