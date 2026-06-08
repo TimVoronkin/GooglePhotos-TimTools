@@ -9,6 +9,8 @@ const kmlSection = document.getElementById('kml-section');
 const folderInputWrapper = document.getElementById('folderInputWrapper');
 const enableUpLink = document.getElementById('enableUpLink');
 const enableDateSearch = document.getElementById('enableDateSearch');
+const upLinkClosePhoto = document.getElementById('upLinkClosePhoto');
+const uplinkSubSection = document.getElementById('uplink-sub-section');
 
 // Elements requiring auto-save
 const allInputs = [
@@ -17,7 +19,8 @@ const allInputs = [
     kmlFilePrefix,
     enableKmlExport,
     enableUpLink,
-    enableDateSearch
+    enableDateSearch,
+    upLinkClosePhoto
 ];
 
 // Events
@@ -49,6 +52,7 @@ function restoreOptions() {
 
     window.TimTools.Settings.getAll().then(items => {
         enableUpLink.checked = items.enableUpLink;
+        upLinkClosePhoto.checked = items.upLinkClosePhoto;
         enableDateSearch.checked = items.enableDateSearch;
         enableKmlExport.checked = items.enableKmlExport;
 
@@ -61,6 +65,13 @@ function restoreOptions() {
 }
 
 function updateUI() {
+    // Toggle UpLink Section
+    if (enableUpLink.checked) {
+        uplinkSubSection.classList.add('visible');
+    } else {
+        uplinkSubSection.classList.remove('visible');
+    }
+
     // Toggle KML Section
     if (enableKmlExport.checked) {
         kmlSection.classList.add('visible');
@@ -99,6 +110,7 @@ function adjustInputWidth(input) {
 function saveOptions() {
     window.TimTools.Settings.set({
         enableUpLink: enableUpLink.checked,
+        upLinkClosePhoto: upLinkClosePhoto.checked,
         enableDateSearch: enableDateSearch.checked,
         enableKmlExport: enableKmlExport.checked,
         kmlCreateSubfolder: kmlCreateSubfolder.checked,

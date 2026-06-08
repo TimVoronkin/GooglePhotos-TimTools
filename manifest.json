@@ -1,56 +1,42 @@
 {
-    "manifest_version": 3,
-    "name": "Google Photos Tim Tools",
-    "version": "0.2",
-    "description": "Combined tools for Google Photos: Timeline Button, Date Search & KML Export",
-    "icons": {
-        "128": "assets/icons/logo128.png"
-    },
-    "permissions": [
-        "storage",
-        "downloads",
-        "clipboardWrite",
-        "tabs"
-    ],
-    "action": {},
-    "options_ui": {
-        "page": "src/options/options.html",
-        "open_in_tab": true
-    },
-    "background": {
-        "service_worker": "src/background/service_worker.js"
-    },
-    "content_scripts": [
-        {
-            "matches": [
-                "*://photos.google.com/*"
-            ],
-            "js": [
-                "src/core/settings.js",
-                "src/core/dom_utils.js",
-                "src/content/modules/back_button.js",
-                "src/content/modules/date_picker.js",
-                "src/content/modules/kml_export/ui.js",
-                "src/content/modules/kml_export/extractor.js",
-                "src/content/modules/kml_export/generator.js",
-                "src/content/modules/kml_export/main.js",
-                "src/content/main.js"
-            ],
-            "css": [
-                "src/content/styles.css"
-            ],
-            "run_at": "document_idle"
-        }
-    ],
-    "web_accessible_resources": [
-        {
-            "resources": [
-                "assets/icons/*",
-                "src/options/options.html"
-            ],
-            "matches": [
-                "*://photos.google.com/*"
-            ]
-        }
-    ]
+  "manifest_version": 3,
+  "name": "Google Photos Tim Tools",
+  "version": "0.3",
+  "description": "Combined tools for Google Photos: Timeline Button, Date Search & KML Export",
+  "icons": {
+    "128": "assets/icons/logo128.png"
+  },
+  "permissions": ["storage", "downloads", "clipboardWrite", "tabs"],
+  "action": {},
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "src/background/service_worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://photos.google.com/*"],
+      "js": [
+        "src/core/settings.js",
+        "src/core/dom_utils.js",
+        "src/content/modules/back_button.js",
+        "src/content/modules/date_picker.js",
+        "src/content/modules/kml_export/ui.js",
+        "src/content/modules/kml_export/extractor.js",
+        "src/content/modules/kml_export/generator.js",
+        "src/content/modules/kml_export/main.js",
+        "src/content/main.js"
+      ],
+      "css": ["src/content/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/icons/*", "src/options/options.html"],
+      "matches": ["*://photos.google.com/*"]
+    }
+  ]
 }

@@ -6,59 +6,77 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         init: function () {
             console.log('[TimTools] BackButton: Init');
             let lastUrl = location.href;
+            
+            // 1. Observe child mutations and attribute (class/style) changes for visibility toggles
             new MutationObserver(() => {
                 if (location.href !== lastUrl) {
                     lastUrl = location.href;
                     console.log('[TimTools] BackButton: URL changed to', lastUrl);
                 }
-                // Continuously ensure button state matches the current URL/DOM
                 this.checkAndAddButton();
-            }).observe(document, { subtree: true, childList: true });
+            }).observe(document, { 
+                subtree: true, 
+                childList: true,
+                attributes: true,
+                attributeFilter: ['class', 'style']
+            });
+
+            // 2. Polling safety net to handle framework delays and transition periods
+            setInterval(() => {
+                this.checkAndAddButton();
+            }, 500);
 
             this.checkAndAddButton();
         },
 
         checkAndAddButton: function () {
             var url = window.location.href;
-            var isValidContext = url.includes('/photo/') && (url.includes('/album/') || url.includes('/search/'));
+            var match = url.match(/photos.google.com\/(.+\/)?photo\//);
+            var isValidContext = match && match[1] && !match[1].startsWith('photo/');
             var existingButton = document.getElementById('show-in-timeline-btn');
+            
+            // Check if the button is attached to the DOM and belongs to a visible container
+            let isAttachedAndVisible = false;
+            if (existingButton && document.body.contains(existingButton)) {
+                const parentContainer = existingButton.closest('.rMGHCb');
+                if (parentContainer) {
+                    const rect = parentContainer.getBoundingClientRect();
+                    if (rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.left < window.innerWidth) {
+                        isAttachedAndVisible = true;
+                    }
+                }
+            }
 
             if (isValidContext) {
-                if (!existingButton) {
-                    const containers = document.querySelectorAll('.QtDoYb.MJvped .rMGHCb');
-
+                if (!isAttachedAndVisible) {
+                    if (existingButton) {
+                        console.log('[TimTools] BackButton: Removing button from hidden/detached container.');
+                        existingButton.remove();
+                    }
+                    
+                    // Option 1: Find the target header container via the native back button SVG path
+                    const backArrowPath = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z";
+                    const paths = document.querySelectorAll('svg path');
                     let targetContainer = null;
-                    for (let i = 0; i < containers.length; i++) {
-                        const c = containers[i];
-                        const rect = c.getBoundingClientRect();
-                        const isVisible = rect.width > 0 && rect.height > 0;
-
-                        if (isVisible && !targetContainer) {
-                            targetContainer = c;
-                            console.log(`[TimTools] BackButton: Found VISIBLE container at index ${i}`);
+                    
+                    for (let path of paths) {
+                        if (path.getAttribute('d') === backArrowPath) {
+                            const container = path.closest('.rMGHCb');
+                            if (container) {
+                                const rect = container.getBoundingClientRect();
+                                // Ensure container is visible and within the visible screen area horizontally
+                                const isVisible = rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.left < window.innerWidth;
+                                if (isVisible) {
+                                    targetContainer = container;
+                                    break;
+                                }
+                            }
                         }
                     }
 
                     if (targetContainer) {
-                        console.log('[TimTools] BackButton: Injecting button into the visible container.');
+                        console.log('[TimTools] BackButton: Target container found. Injecting.');
                         this.injectButton(targetContainer);
-                    } else {
-                        if (!this._missingContainerLogged) {
-                            console.log(`[TimTools] BackButton: Missing container. Looked at ${containers.length} potential containers, but none were visible.`);
-                            this._missingContainerLogged = true;
-                        }
-                    }
-                } else {
-                    this._missingContainerLogged = false;
-                    const rect = existingButton.getBoundingClientRect();
-                    const isVisible = rect.width > 0 && rect.height > 0;
-
-                    if (!isVisible && !this._warnedHidden) {
-                        console.log('[TimTools] BackButton: WARNING! Button exists in DOM but is HIDDEN.');
-                        this._warnedHidden = true;
-                        existingButton.remove();
-                    } else if (isVisible) {
-                        this._warnedHidden = false; // reset
                     }
                 }
             } else {
@@ -72,52 +90,79 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         injectButton: function (container) {
             var button = document.createElement('button');
             button.id = 'show-in-timeline-btn';
-            button.title = 'Back to Album/Search';
+            button.title = 'Show in timeline';
+            
+            // Layout and styling to blend in with Google Photos top header buttons
             button.style.position = 'relative';
             button.style.zIndex = '99999';
-            button.style.background = 'rgba(0,0,0,0.3)';
-            button.style.padding = '8px';
+            button.style.background = 'transparent';
             button.style.border = 'none';
             button.style.borderRadius = '50%';
+            button.style.padding = '8px';
+            button.style.marginLeft = '8px';
             button.style.cursor = 'pointer';
             button.style.display = 'flex';
             button.style.alignItems = 'center';
             button.style.justifyContent = 'center';
-            button.style.marginLeft = '8px';
+            button.style.transition = 'background-color 0.2s';
 
-            const iconUrl = chrome.runtime.getURL('assets/icons/up_button.svg');
-            const icon = document.createElement('img');
-            icon.src = iconUrl;
-            icon.style.cssText = 'width: 28px; height: 28px; display: block;';
+            // Hover styling matching Google Photos dark overlay headers
+            button.addEventListener('mouseenter', function () {
+                button.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
+            });
+            button.addEventListener('mouseleave', function () {
+                button.style.backgroundColor = 'transparent';
+            });
 
-            button.appendChild(icon);
-            button.addEventListener('click', function () {
-                let currentUrl = window.location.href;
-                let newUrl;
-                if (currentUrl.includes('/album/') || currentUrl.includes('/search/')) {
-                    // Current: https://photos.google.com/search/XYZ/photo/ABC
-                    // Desired: https://photos.google.com/photo/ABC
+            button.innerHTML = `
+                <svg width="24" height="24" viewBox="-0.5 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+                    <path d="M8 13.8599L10.87 10.8C11.0125 10.6416 11.1868 10.5149 11.3815 10.4282C11.5761 10.3415 11.7869 10.2966 12 10.2966C12.2131 10.2966 12.4239 10.3415 12.6185 10.4282C12.8132 10.5149 12.9875 10.6416 13.13 10.8L16 13.8599" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M3 7.41992L3 17.4199C3 19.6291 4.79086 21.4199 7 21.4199H17C19.2091 21.4199 21 19.6291 21 17.4199V7.41992C21 5.21078 19.2091 3.41992 17 3.41992H7C4.79086 3.41992 3 5.21078 3 7.41992Z" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
 
-                    const urlParts = currentUrl.split('/photo/');
-                    if (urlParts.length > 1) {
-                        // urlParts[1] contains the photo ID (e.g., 'AF1QipODaVyjC0f0vwUzOLOw-8p4yHrQAorNh3DofN-X')
-                        newUrl = `https://photos.google.com/photo/${urlParts[1]}`;
+            button.addEventListener('click', async function () {
+                var url = window.location.href;
+                // Remove everything between domain and /photo/ (keep /photo/ and after)
+                var newUrl = url.replace(/(photos.google.com\/)\S+?(\/photo\/)/, '$1$2');
+                // Remove possible double slash after domain
+                newUrl = newUrl.replace('photos.google.com//', 'photos.google.com/');
+                
+                // Get setting dynamically
+                const settings = await window.TimTools.Settings.getAll();
+
+                if (settings.upLinkClosePhoto) {
+                    console.log('[TimTools] BackButton: Pushing history state to', newUrl);
+                    
+                    // 1. Change the address bar to the timeline photo URL without reloading
+                    history.pushState(null, '', newUrl);
+
+                    // 2. Find native back button link and change its target to main timeline grid (./)
+                    const nativeBackLink = container.querySelector('a[jsname="hSRGPd"]');
+                    if (nativeBackLink) {
+                        nativeBackLink.setAttribute('href', './');
+                        console.log('[TimTools] BackButton: Triggering click on native back link.');
+                        nativeBackLink.click();
+                    } else {
+                        // Fallback: click the button wrapper if anchor is not found
+                        const nativeBackButton = container.querySelector('[jsname="LgbsSe"]');
+                        if (nativeBackButton) {
+                            nativeBackButton.click();
+                        }
                     }
-                }
-
-                console.log('[TimTools] BackButton: Navigating to', newUrl);
-                if (newUrl) {
+                } else {
+                    console.log('[TimTools] BackButton: Navigating to timeline photo URL:', newUrl);
                     window.location.href = newUrl;
                 }
             });
 
-            // Insert at the second position (index 1) if possible
+            // Insert as the second child (right after the back button container)
             if (container.children.length > 1) {
                 container.insertBefore(button, container.children[1]);
-                console.log('[TimTools] BackButton: Button successfully injected at position 2.');
+                console.log('[TimTools] BackButton: Injected button as second child in container.');
             } else {
                 container.appendChild(button);
-                console.log('[TimTools] BackButton: Button appended to container (not enough children).');
+                console.log('[TimTools] BackButton: Appended button to container.');
             }
         }
     };

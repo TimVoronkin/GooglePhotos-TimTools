@@ -3,6 +3,7 @@ window.TimTools = window.TimTools || {};
 (function () {
     const DEFAULTS = {
         enableUpLink: true,
+        upLinkClosePhoto: false,
         enableDateSearch: true,
         enableKmlExport: true,
         kmlCreateSubfolder: true,
