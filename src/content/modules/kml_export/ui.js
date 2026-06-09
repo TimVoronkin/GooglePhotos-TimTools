@@ -30,7 +30,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
             render: function (current, total, startTime, status) {
                 let existing = document.getElementById('gp-processing-popup');
-                const stopIcon = chrome.runtime.getURL('assets/icons/stop-24.png');
+                const stopIcon = chrome.runtime.getURL('assets/active/stop-icon.svg');
                 const percent = total > 0 ? (current / total) * 100 : 0;
 
                 let timeDetails = "Calculating...";
@@ -185,7 +185,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
             button.onmouseover = () => button.style.backgroundColor = 'rgba(255,255,255,0.1)';
             button.onmouseout = () => button.style.backgroundColor = 'transparent';
 
-            const iconUrl = chrome.runtime.getURL('assets/icons/timeline-24.png');
+            const iconUrl = chrome.runtime.getURL('assets/active/kml-export-icon.svg');
             const icon = document.createElement('img');
             icon.src = iconUrl;
             icon.style.cssText = 'width: 24px; height: 24px; display: block;';

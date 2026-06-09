@@ -98,13 +98,17 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             button.style.background = 'transparent';
             button.style.border = 'none';
             button.style.borderRadius = '50%';
-            button.style.padding = '8px';
-            button.style.marginLeft = '8px';
+            button.style.width = '40px';
+            button.style.height = '40px';
+            button.style.padding = '0';
+            button.style.marginLeft = '4px';
             button.style.cursor = 'pointer';
             button.style.display = 'flex';
             button.style.alignItems = 'center';
             button.style.justifyContent = 'center';
             button.style.transition = 'background-color 0.2s';
+            button.style.flexShrink = '0';
+            button.style.alignSelf = 'center';
 
             // Hover styling matching Google Photos dark overlay headers
             button.addEventListener('mouseenter', function () {

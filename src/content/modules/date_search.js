@@ -4,7 +4,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 (function () {
     const CONTAINER_SELECTOR = '.Aul2T.m6aMje';
     const INPUT_SELECTOR = 'input.Ax4B8.ZAGvjd, textarea.Ax4B8.ZAGvjd';
-    const ICON_URL = chrome.runtime.getURL('assets/icons/calendar.png');
+    const ICON_URL = chrome.runtime.getURL('assets/active/calendar-icon.svg');
 
     const MONTH_NAMES = {
         'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
