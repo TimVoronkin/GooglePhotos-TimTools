@@ -4,7 +4,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 (function () {
     const UpButton = {
         init: function () {
-            console.log('[TimTools] UpButton: Init');
+            console.log('[GP-TimTools] UpButton: Init');
             let lastUrl = location.href;
             
             // 1. Observe child mutations and attribute (class/style) changes for visibility toggles

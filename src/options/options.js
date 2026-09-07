@@ -5,6 +5,7 @@ const kmlCreateSubfolder = document.getElementById('kmlCreateSubfolder');
 const kmlFolderName = document.getElementById('kmlFolderName');
 const kmlFilePrefix = document.getElementById('kmlFilePrefix');
 const enableKmlExport = document.getElementById('enableKmlExport');
+const enableDragInTime = document.getElementById('enableDragInTime');
 const kmlSection = document.getElementById('kml-section');
 const folderInputWrapper = document.getElementById('folderInputWrapper');
 const enableUpButton = document.getElementById('enableUpButton');
@@ -19,6 +20,7 @@ const allInputs = [
     kmlFolderName,
     kmlFilePrefix,
     enableKmlExport,
+    enableDragInTime,
     enableUpButton,
     enableDateSearch,
     enableDeleteShortcut,
@@ -48,7 +50,7 @@ function debouncedSave() {
 
 function restoreOptions() {
     if (!window.TimTools || !window.TimTools.Settings) {
-        console.error('[TimTools] Settings module not loaded!');
+        console.error('[GP-TimTools] Settings module not loaded!');
         return;
     }
 
@@ -58,6 +60,7 @@ function restoreOptions() {
         enableDateSearch.checked = items.enableDateSearch;
         enableDeleteShortcut.checked = items.enableDeleteShortcut;
         enableKmlExport.checked = items.enableKmlExport;
+        if (enableDragInTime) enableDragInTime.checked = items.enableDragInTime !== false;
 
         kmlCreateSubfolder.checked = items.kmlCreateSubfolder !== false;
         kmlFolderName.value = items.kmlFolderName;
@@ -117,10 +120,11 @@ function saveOptions() {
         enableDateSearch: enableDateSearch.checked,
         enableDeleteShortcut: enableDeleteShortcut.checked,
         enableKmlExport: enableKmlExport.checked,
+        enableDragInTime: enableDragInTime ? enableDragInTime.checked : true,
         kmlCreateSubfolder: kmlCreateSubfolder.checked,
         kmlFolderName: kmlFolderName.value,
         kmlFilePrefix: kmlFilePrefix.value
     }).then(() => {
-        console.log('[TimTools] Settings saved');
+        console.log('[GP-TimTools] Settings saved');
     });
 }

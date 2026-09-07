@@ -148,7 +148,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                     if (text === "Share" || label === "Share" || label === "Поділитися") {
                         // The parent of the share button is likely the actions container
                         targetContainer = btn.parentElement;
-                        console.log('[TimTools] Found toolbar via Share button:', label);
+                        console.log('[GP-TimTools] Found toolbar via Share button:', label);
                         break;
                     }
                 }
@@ -156,7 +156,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
             if (!targetContainer) {
                 // Debug: why not found?
-                // console.log('[TimTools] Toolbar not found. Photos selected?');
+                // console.log('[GP-TimTools] Toolbar not found. Photos selected?');
                 return;
             }
 
@@ -197,7 +197,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
             // Insert: prepend to target container so it appears on the left or start of actions
             targetContainer.prepend(container);
-            console.log('[TimTools] KML Export button injected.');
+            console.log('[GP-TimTools] KML Export button injected.');
         },
 
         showToast: function (msg) {

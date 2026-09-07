@@ -12,42 +12,51 @@ window.TimTools = window.TimTools || {};
     }
 
     async function init() {
-        console.log('[TimTools] Initializing...');
+        console.log('[GP-TimTools] Initializing...');
 
         const settings = await Settings.getAll();
-        console.log('[TimTools] Settings loaded:', settings);
+        console.log('[GP-TimTools] Settings loaded:', settings);
 
         if (settings.enableUpButton) {
             if (Modules.UpButton) {
                 Modules.UpButton.init();
-                console.log('[TimTools] Up Button module loaded.');
+                console.log('[GP-TimTools] Up Button module loaded.');
             } else {
-                console.error('[TimTools] Up Button module missing!');
+                console.error('[GP-TimTools] Up Button module missing!');
             }
         }
 
         if (settings.enableDateSearch) {
             if (Modules.DateSearch) {
                 Modules.DateSearch.init();
-                console.log('[TimTools] Date Search module loaded.');
+                console.log('[GP-TimTools] Date Search module loaded.');
             }
         }
 
         if (settings.enableDeleteShortcut) {
             if (Modules.DeleteShortcut) {
                 Modules.DeleteShortcut.init();
-                console.log('[TimTools] Delete Shortcut module loaded.');
+                console.log('[GP-TimTools] Delete Shortcut module loaded.');
             }
         }
 
         if (settings.enableKmlExport) {
             // KML Controller is nested
             if (Modules.KmlExport && Modules.KmlExport.Controller) {
-                console.log('[TimTools] Initializing KML Export Controller...');
+                console.log('[GP-TimTools] Initializing KML Export Controller...');
                 Modules.KmlExport.Controller.init();
-                console.log('[TimTools] KML Export module loaded.');
+                console.log('[GP-TimTools] KML Export module loaded.');
             } else {
-                console.error('[TimTools] KML Export Controller not found!', Modules.KmlExport);
+                console.error('[GP-TimTools] KML Export Controller not found!', Modules.KmlExport);
+            }
+        }
+
+        if (settings.enableDragInTime) {
+            if (Modules.DragInTime) {
+                Modules.DragInTime.init();
+                console.log('[GP-TimTools] Drag in Time module loaded.');
+            } else {
+                console.error('[GP-TimTools] Drag in Time module missing!');
             }
         }
     }

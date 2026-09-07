@@ -4,7 +4,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 (function () {
     const DeleteShortcut = {
         init: function () {
-            console.log('[TimTools] DeleteShortcut: Init');
+            console.log('[GP-TimTools] DeleteShortcut: Init');
             // Listen in the capturing phase to intercept the key before page handlers
             window.addEventListener('keydown', this.handleKeyDown.bind(this), true);
         },

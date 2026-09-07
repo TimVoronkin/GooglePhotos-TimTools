@@ -11,22 +11,22 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
         startTime: 0,
 
         init: function () {
-            console.log('[TimTools] KML Controller: Init');
+            console.log('[GP-TimTools] KML Controller: Init');
 
             // Ask the service worker if this tab is an extraction tab
             // (We can't use URL hash because Google Photos strips it)
             chrome.runtime.sendMessage({ type: 'CHECK_EXTRACTION_MODE' }, (response) => {
                 if (chrome.runtime.lastError) {
-                    console.error('[TimTools] KML Controller: Error checking mode:', chrome.runtime.lastError);
+                    console.error('[GP-TimTools] KML Controller: Error checking mode:', chrome.runtime.lastError);
                     // Fallback to Master Mode
                     this.startMasterMode();
                     return;
                 }
 
-                console.log('[TimTools] KML Controller: Mode check response:', response);
+                console.log('[GP-TimTools] KML Controller: Mode check response:', response);
 
                 if (response && response.isExtraction) {
-                    console.log('[TimTools] KML Controller: Child Mode, masterId:', response.masterId);
+                    console.log('[GP-TimTools] KML Controller: Child Mode, masterId:', response.masterId);
                     // Show progress popup on child tab
                     const p = response.progress || {};
                     if (p.current !== undefined && p.total !== undefined) {
@@ -45,17 +45,17 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
         },
 
         startMasterMode: function () {
-            console.log('[TimTools] KML Controller: Master Mode');
+            console.log('[GP-TimTools] KML Controller: Master Mode');
             this.listenForStop();
             this.initMaster();
         },
 
         initMaster: function () {
-            console.log('[TimTools] KML Controller: Starting Observer');
+            console.log('[GP-TimTools] KML Controller: Starting Observer');
             // Observe for toolbar
             const observer = new MutationObserver((mutations) => {
                 // Throttle or just log occasionally if needed, but for now just call inject
-                // console.log('[TimTools] DOM Mutation detected'); 
+                // console.log('[GP-TimTools] DOM Mutation detected'); 
                 window.TimTools.Modules.KmlExport.UI.injectButton(() => this.handleExportClick());
             });
             observer.observe(document.body, { childList: true, subtree: true });

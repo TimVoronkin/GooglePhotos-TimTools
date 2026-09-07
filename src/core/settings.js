@@ -7,6 +7,7 @@ window.TimTools = window.TimTools || {};
         enableDateSearch: true,
         enableDeleteShortcut: true,
         enableKmlExport: true,
+        enableDragInTime: true,
         kmlCreateSubfolder: true,
         kmlFolderName: "GooglePhotosExports",
         kmlFilePrefix: "MyExport_"
