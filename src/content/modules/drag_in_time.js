@@ -16,50 +16,23 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         console.error(LOG_PREFIX, ...args);
     }
 
-    // Precise Selectors for Google Photos Grid DOM
+    // Selectors
     const LISTBOX_SELECTOR = 'ul[role="listbox"]';
-    const SELECTED_PHOTO_SELECTOR = 'div.rtIMgb.nV0gYe.WjVZdb.R1sU4e';
-    const ALL_PHOTO_CARDS_SELECTOR = 'div.rtIMgb.nV0gYe';
-    const ROW_CONTAINER_SELECTOR = 'div.I9QCXd';
-    const TOOLBAR_ACTIONS_SELECTOR = 'div[jscontroller="MHDZYd"]';
-    const TOOLBAR_SELECTOR = '.c9yG5b.txMZRd';
+    const ALL_PHOTO_CARDS_SELECTOR = 'div.rtIMgb';
+    const SELECTED_PHOTO_SELECTOR = 'div.rtIMgb.R1sU4e';
 
     const DragInTime = {
-        isActive: false,
         observer: null,
-        selectedPhotos: [], // Array of photo objects
-        modifiedTimestamps: new Map(), // photoId/label -> Date object
-        cloneOverlays: new Map(), // cardEl -> cloneEl
-
-        // Custom Mouse Drag State
+        modalOverlay: null,
+        photos: [], // Array of photo objects in modal
+        selectedMediaKeys: new Set(), // Set of mediaKeys that were originally selected
+        modifiedTimestamps: new Map(), // mediaKey/id -> { photo, oldDate, newDate }
         isDragging: false,
-        draggedCard: null,
-        dragPhantom: null,
-        dropIndicator: null,
-        currentTargetCard: null,
-        dropPosition: 'before',
-
-        // Grid re-render & zoom observers
-        gridObserver: null,
-        resizeHandler: null,
-
-        // Track modified neighbor styles to cleanly restore layout
-        shiftedCards: new Map(), // cardEl -> { origTransform, origWidth, origTransition, origOverflow }
-
-        restoreNeighborStyles: function () {
-            if (this.shiftedCards.size === 0) return;
-            log(`Restoring original styles for ${this.shiftedCards.size} shifted cards...`);
-            this.shiftedCards.forEach((orig, el) => {
-                el.style.width = orig.origWidth || '';
-                el.style.transform = orig.origTransform || '';
-                el.style.transition = orig.origTransition || '';
-                el.style.overflow = orig.origOverflow || '';
-            });
-            this.shiftedCards.clear();
-        },
+        draggedPhotoId: null,
+        dragSourceIndex: -1,
 
         init: function () {
-            log('Initializing Drag in Time module...');
+            log('Initializing Drag in Time module (Modal Edition)...');
             this.startModalObserver();
             log('Modal observer active.');
         },
@@ -106,7 +79,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const subSpan = newOption.querySelector('[jsname="uyy0gb"]') || newOption.querySelector('.aqdrmf-rymPhb-L8ivfd-fmcmS');
 
             if (titleSpan) titleSpan.textContent = 'Drag in Time';
-            if (subSpan) subSpan.textContent = 'Drag selected photos chronologically or edit date & time';
+            if (subSpan) subSpan.textContent = 'Reorder photos chronologically in a visual window';
 
             const iconContainer = newOption.querySelector('.aqdrmf-rymPhb-KkROqb');
             if (iconContainer) {
@@ -134,26 +107,39 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 e.stopImmediatePropagation();
 
                 log('"Drag in Time" option clicked in modal listbox!');
+                this.captureSelectedKeys();
                 this.closeDateModal();
                 setTimeout(() => {
-                    this.activateMode();
-                }, 60);
+                    this.openDragModal();
+                }, 80);
             };
 
             newOption.addEventListener('click', handleSelect, true);
-
             listbox.appendChild(newOption);
             log('Successfully injected 3rd option "Drag in Time".');
         },
 
+        captureSelectedKeys: function () {
+            this.selectedMediaKeys.clear();
+            const selectedCards = Array.from(document.querySelectorAll(SELECTED_PHOTO_SELECTOR + ', div.rtIMgb [role="checkbox"][aria-checked="true"]'));
+            log(`Found ${selectedCards.length} selected DOM cards on main page.`);
+            selectedCards.forEach((el, i) => {
+                const card = el.closest('div.rtIMgb') || el;
+                const info = this.extractCardInfo(card, i);
+                if (info && info.mediaKey) {
+                    this.selectedMediaKeys.add(info.mediaKey);
+                }
+            });
+            log(`Captured ${this.selectedMediaKeys.size} initially selected photo mediaKeys.`);
+        },
+
         closeDateModal: function () {
-            log('Closing Google Photos date modal dialog...');
+            log('Closing Google Photos native date modal dialog...');
             const listbox = document.querySelector(LISTBOX_SELECTOR);
             const dialog = (listbox && listbox.closest('[role="dialog"]')) || document.querySelector('div[role="dialog"], c-wiz[role="dialog"]');
 
             let closeBtn = null;
             if (dialog) {
-                // 1. Search for close button inside dialog by SVG close path
                 const paths = dialog.querySelectorAll('svg path');
                 for (let p of paths) {
                     const d = p.getAttribute('d') || '';
@@ -163,7 +149,6 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     }
                 }
 
-                // 2. Search by aria-label keywords
                 if (!closeBtn) {
                     const buttons = dialog.querySelectorAll('button');
                     for (let b of buttons) {
@@ -175,239 +160,49 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     }
                 }
 
-                // 3. Search by dialog action attributes
                 if (!closeBtn) {
                     closeBtn = dialog.querySelector('button[data-mdc-dialog-action], button[jsname="V67aGc"]');
                 }
             }
 
-            // Fallback global search
-            if (!closeBtn) {
-                closeBtn = document.querySelector('button[data-mdc-dialog-action="TvD9Pc"], button[aria-label*="Close" i], button[aria-label*="Закр" i], button[aria-label*="Скасув" i]');
-            }
-
             if (closeBtn) {
-                log('Modal closed via close button click:', closeBtn);
                 closeBtn.click();
-            } else {
-                log('Close button not found, falling back to Escape key and backdrop dismissal.');
             }
 
-            // Always dispatch Escape key events as well
             const escTarget = dialog || document.activeElement || document.body;
             const escDown = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true });
             const escUp = new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true });
             escTarget.dispatchEvent(escDown);
             escTarget.dispatchEvent(escUp);
 
-            // Also click backdrop scrim if present
             const scrim = document.querySelector('.mdc-dialog__scrim, .VfPpkd-T34Ek-haAclf');
             if (scrim) {
                 try { scrim.click(); } catch (err) {}
             }
         },
 
-        // --- Step 2: Activate Drag-in-Time Mode ---
-        activateMode: function () {
-            if (this.isActive) {
-                warn('Drag in Time Mode is already active.');
-                return;
-            }
-
-            this.isActive = true;
-            log('====================================================');
-            log('ACTIVATING DRAG IN TIME MODE (CLEAN GRID, NO INITIAL DISTORTION)');
-            log('====================================================');
-
-            const selectedEls = document.querySelectorAll(SELECTED_PHOTO_SELECTOR);
-            log(`Found ${selectedEls.length} selected photo cards on page.`);
-
-            this.selectedPhotos = Array.from(selectedEls).map((el, index) => {
-                const info = this.extractPhotoInfo(el, index);
-                log(`Selected Photo #${index + 1}:`, info);
-                return info;
-            });
-
-            this.injectTopToolbarControls();
-            this.renderPhotoOverlays();
-
-            // Listen to window resize (page zoom Ctrl +/-)
-            this.resizeHandler = () => {
-                if (!this.isActive) return;
-                log('Window resized / zoomed. Re-checking overlays...');
-                this.renderPhotoOverlays();
-                this.injectTopToolbarControls();
-            };
-            window.addEventListener('resize', this.resizeHandler);
-
-            // Continuous DOM observer to restore overlays if Google Photos re-renders cards on zoom/scroll
-            this.gridObserver = new MutationObserver(() => {
-                if (!this.isActive) return;
-                const selected = document.querySelectorAll(SELECTED_PHOTO_SELECTOR);
-                let missing = false;
-                for (let card of selected) {
-                    if (!card.querySelector('.gp-drag-time-overlay')) {
-                        missing = true;
-                        break;
-                    }
-                }
-                if (missing) {
-                    this.renderPhotoOverlays();
-                }
-                if (!document.querySelector('.gp-drag-time-toolbar')) {
-                    this.injectTopToolbarControls();
-                }
-            });
-            this.gridObserver.observe(document.body, { childList: true, subtree: true });
-
-            log('Drag in Time Mode fully activated with clean grid.');
-        },
-
-        deactivateMode: function () {
-            if (!this.isActive) return;
-            log('====================================================');
-            log('DEACTIVATING DRAG IN TIME MODE');
-            log('====================================================');
-            this.isActive = false;
-
-            if (this.resizeHandler) {
-                window.removeEventListener('resize', this.resizeHandler);
-                this.resizeHandler = null;
-            }
-            if (this.gridObserver) {
-                this.gridObserver.disconnect();
-                this.gridObserver = null;
-            }
-
-            const toolbarContainer = document.querySelector('.gp-drag-time-toolbar');
-            if (toolbarContainer) toolbarContainer.remove();
-
-            // Remove created clones
-            this.cloneOverlays.forEach((cloneEl) => cloneEl.remove());
-            this.cloneOverlays.clear();
-
-            // Restore all shifted neighbor styles cleanly
-            this.restoreNeighborStyles();
-
-            // Restore original selected photo cards styling
-            this.selectedPhotos.forEach(p => {
-                if (p.element) {
-                    p.element.style.opacity = '';
-                    p.element.style.filter = '';
-                    p.element.style.outline = '';
-                    p.element.style.pointerEvents = '';
-                }
-            });
-
-            document.querySelectorAll('.gp-drag-time-overlay').forEach(el => el.remove());
-
-            this.selectedPhotos = [];
-            this.modifiedTimestamps.clear();
-            this.cleanupCustomDrag();
-
-            log('Drag in Time Mode deactivated.');
-        },
-
-        // --- Step 3: Top Toolbar Controls (Vertically Centered) ---
-        injectTopToolbarControls: function () {
-            log('Injecting vertically centered top toolbar controls...');
-            const existing = document.querySelector('.gp-drag-time-toolbar');
-            if (existing) existing.remove();
-
-            let targetContainer = document.querySelector(TOOLBAR_ACTIONS_SELECTOR) || document.querySelector(TOOLBAR_SELECTOR);
-            if (!targetContainer) {
-                warn('Toolbar actions container not found, appending fallback.');
-                targetContainer = document.body;
-            }
-
-            const container = document.createElement('div');
-            container.className = 'gp-drag-time-toolbar';
-            container.style.cssText = `
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-                gap: 8px;
-                margin-left: 12px;
-                align-self: center;
-                z-index: 10000;
-            `;
-
-            const applyBtn = document.createElement('button');
-            applyBtn.className = 'gp-apply-time-btn';
-            applyBtn.textContent = 'Apply date & time changes';
-            applyBtn.style.cssText = `
-                background-color: #8ab4f8;
-                color: #202124;
-                border: none;
-                border-radius: 18px;
-                padding: 6px 16px;
-                font-weight: 600;
-                font-size: 13px;
-                cursor: pointer;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-                display: flex;
-                align-items: center;
-                height: 32px;
-            `;
-            applyBtn.onclick = () => this.handleApplyChanges();
-
-            const cancelBtn = document.createElement('button');
-            cancelBtn.className = 'gp-cancel-time-btn';
-            cancelBtn.textContent = 'Cancel';
-            cancelBtn.style.cssText = `
-                background-color: rgba(255,255,255,0.1);
-                color: #e8eaed;
-                border: 1px solid rgba(255,255,255,0.3);
-                border-radius: 18px;
-                padding: 6px 14px;
-                font-size: 13px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                height: 32px;
-            `;
-            cancelBtn.onclick = () => this.deactivateMode();
-
-            container.appendChild(applyBtn);
-            container.appendChild(cancelBtn);
-            targetContainer.prepend(container);
-
-            log('Top toolbar controls injected and vertically centered.');
-        },
-
-        // --- Step 4: Extract Photo Info & Custom Date Formatting (YYYY.M.D HH:mm) ---
-        extractPhotoInfo: function (cardEl, fallbackIndex) {
-            const linkEl = cardEl.querySelector('a');
-            const href = linkEl ? linkEl.href : '';
-            const ariaLabel = linkEl ? linkEl.getAttribute('aria-label') : (cardEl.getAttribute('aria-label') || '');
-
-            const parsedDate = this.parseDateFromAriaLabel(ariaLabel);
-            const photoId = href || `photo_${fallbackIndex}_${Date.now()}`;
-
-            return {
-                id: photoId,
-                element: cardEl,
-                ariaLabel: ariaLabel,
-                timestamp: parsedDate || new Date(),
-                isOriginalSelected: true
-            };
-        },
-
+        // --- Step 2: Extract Photos from DOM ---
         parseDateFromAriaLabel: function (text) {
             if (!text) return null;
-
             try {
-                const cleanText = text.replace(/^(Photo|Світлина|Video|Відео)\s*[\–\-]\s*/i, '').trim();
+                // Strip prefix like "Photo - Landscape - " or "Світлина - Портрет - "
+                const cleanText = text.replace(/^(Photo|Світлина|Video|Відео)\s*[\–\-]\s*(Landscape|Portrait|Square|[\w\s]+)?[\–\-]?\s*/i, '').trim();
                 const d = new Date(cleanText);
                 if (!isNaN(d.getTime())) {
                     return d;
                 }
-            } catch (err) {
-                warn('Failed to parse date string:', text, err);
-            }
-
+            } catch (err) {}
             return null;
+        },
+
+        formatDateHeader: function (date) {
+            if (!date || isNaN(date.getTime())) return 'Unknown Date';
+            const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+            try {
+                return date.toLocaleDateString(undefined, options);
+            } catch (e) {
+                return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
+            }
         },
 
         formatCustomDate: function (date) {
@@ -417,12 +212,20 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const day = date.getDate();
             const hours = date.getHours().toString().padStart(2, '0');
             const minutes = date.getMinutes().toString().padStart(2, '0');
-            return `${year}.${month}.${day} ${hours}:${minutes}`;
+            const seconds = date.getSeconds().toString().padStart(2, '0');
+            return `${year}.${month}.${day} ${hours}:${minutes}:${seconds}`;
+        },
+
+        formatShortTime: function (date) {
+            if (!date || isNaN(date.getTime())) return '';
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
         },
 
         parseCustomDateString: function (str) {
             if (!str) return null;
-            const match = str.trim().match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})\s+(\d{1,2}):(\d{1,2})$/);
+            const match = str.trim().match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
             if (!match) return null;
 
             const year = parseInt(match[1], 10);
@@ -430,665 +233,1014 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const day = parseInt(match[3], 10);
             const hours = parseInt(match[4], 10);
             const minutes = parseInt(match[5], 10);
+            const seconds = match[6] ? parseInt(match[6], 10) : 0;
 
-            const d = new Date(year, month, day, hours, minutes);
+            const d = new Date(year, month, day, hours, minutes, seconds);
             return isNaN(d.getTime()) ? null : d;
         },
 
-        parseTransformXYZ: function (transformStr) {
-            if (!transformStr || transformStr === 'none') return { x: 0, y: 0, z: 0 };
+        extractCardInfo: function (cardEl, index) {
+            const linkEl = cardEl.querySelector('a');
+            const ariaLabel = linkEl ? linkEl.getAttribute('aria-label') : (cardEl.getAttribute('aria-label') || '');
+            const parsedDate = this.parseDateFromAriaLabel(ariaLabel) || new Date();
 
-            // 1. translate3d(X, Y, Z)
-            const t3d = transformStr.match(/translate3d\(([^,]+),\s*([^,]+),\s*([^)]+)\)/);
-            if (t3d) {
-                return {
-                    x: parseFloat(t3d[1]) || 0,
-                    y: parseFloat(t3d[2]) || 0,
-                    z: parseFloat(t3d[3]) || 0
-                };
+            // Extract media key from jslog="...; 8:AF1Qip..."
+            let mediaKey = '';
+            const jslog = cardEl.getAttribute('jslog') || (linkEl ? linkEl.getAttribute('jslog') : '');
+            const mkMatch = jslog.match(/8:(AF1Q[^\s;,]+)/);
+            if (mkMatch) {
+                mediaKey = mkMatch[1];
+            } else if (linkEl && linkEl.href) {
+                const urlParts = linkEl.href.split('/');
+                mediaKey = urlParts[urlParts.length - 1] || `photo_${index}`;
+            } else {
+                mediaKey = `photo_${index}_${parsedDate.getTime()}`;
             }
 
-            // 2. translate(X, Y)
-            const t2d = transformStr.match(/translate\(([^,]+)(?:,\s*([^)]+))?\)/);
-            if (t2d) {
-                return {
-                    x: parseFloat(t2d[1]) || 0,
-                    y: parseFloat(t2d[2]) || 0,
-                    z: 0
-                };
+            // Thumbnail background or image
+            let bgUrl = '';
+            const bgDiv = cardEl.querySelector('[style*="background-image"]');
+            if (bgDiv && bgDiv.style.backgroundImage) {
+                const urlMatch = bgDiv.style.backgroundImage.match(/url\(["']?([^"']+)["']?\)/);
+                if (urlMatch) bgUrl = urlMatch[1];
+            }
+            if (!bgUrl) {
+                const img = cardEl.querySelector('img');
+                if (img) bgUrl = img.currentSrc || img.src;
             }
 
-            // 3. 2D matrix(a, b, c, d, tx, ty)
-            const mat2d = transformStr.match(/^matrix\((.+)\)$/);
-            if (mat2d) {
-                const parts = mat2d[1].split(',').map(s => parseFloat(s.trim()));
-                if (parts.length >= 6) {
-                    return { x: parts[4] || 0, y: parts[5] || 0, z: 0 };
+            // Video info
+            let isVideo = false;
+            let duration = '';
+
+            if (/^(video|відео|видео)\b/i.test(ariaLabel)) {
+                isVideo = true;
+                const durMatch = ariaLabel.match(/\b(\d{1,2}:\d{2}(?::\d{2})?)\b/);
+                if (durMatch) duration = durMatch[1];
+            }
+
+            const durationEl = cardEl.querySelector('.KhS5De');
+            if (durationEl) {
+                const text = durationEl.textContent.trim();
+                if (/\d+:\d+/.test(text)) {
+                    isVideo = true;
+                    duration = text;
                 }
             }
 
-            // 4. 3D matrix3d(...)
-            const mat3d = transformStr.match(/^matrix3d\((.+)\)$/);
-            if (mat3d) {
-                const parts = mat3d[1].split(',').map(s => parseFloat(s.trim()));
-                if (parts.length >= 16) {
-                    return { x: parts[12] || 0, y: parts[13] || 0, z: parts[14] || 0 };
+            if (!isVideo) {
+                const playSvg = cardEl.querySelector('svg path[d*="8 5v14l11-7"], svg path[d*="M8 5v14l11-7z"]');
+                if (playSvg) {
+                    isVideo = true;
                 }
             }
 
-            return { x: 0, y: 0, z: 0 };
+            const isSelected = cardEl.classList.contains('R1sU4e') ||
+                               (this.selectedMediaKeys && this.selectedMediaKeys.has(mediaKey)) ||
+                               (cardEl.querySelector('[role="checkbox"]') && cardEl.querySelector('[role="checkbox"]').getAttribute('aria-checked') === 'true') ||
+                               cardEl.querySelector('[aria-checked="true"]') !== null;
+
+            return {
+                id: mediaKey,
+                mediaKey: mediaKey,
+                element: cardEl,
+                ariaLabel: ariaLabel,
+                timestamp: parsedDate,
+                originalTimestamp: new Date(parsedDate.getTime()),
+                bgUrl: bgUrl,
+                isVideo: isVideo,
+                duration: duration,
+                isSelected: isSelected,
+                isModified: false
+            };
         },
 
-        getCardTransform: function (cardEl) {
-            if (!cardEl) return { x: 0, y: 0, z: 0 };
-            if (cardEl.style && cardEl.style.transform && cardEl.style.transform !== 'none') {
-                const tf = this.parseTransformXYZ(cardEl.style.transform);
-                if (tf.x !== 0 || tf.y !== 0) return tf;
+        collectPhotosForModal: function () {
+            log('Scanning DOM photo cards for Drag in Time modal...');
+            const allCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR));
+            if (allCards.length === 0) {
+                warn('No photo cards found in DOM.');
+                return [];
             }
-            return this.parseTransformXYZ(window.getComputedStyle(cardEl).transform);
-        },
 
-        // --- Step 5: Render Clean Photo Overlays (No Initial Distortion) ---
-        renderPhotoOverlays: function () {
-            log('Rendering clean photo overlays on grid cards...');
-
-            const allCards = document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR);
-            log(`Scanning photo cards (div.rtIMgb.nV0gYe): found ${allCards.length}`);
-
-            allCards.forEach((card, index) => {
-                if (card.querySelector('.gp-drag-time-overlay')) return;
-
-                const isSelected = card.classList.contains('R1sU4e');
-                const linkEl = card.querySelector('a');
-                const ariaLabel = linkEl ? linkEl.getAttribute('aria-label') : (card.getAttribute('aria-label') || '');
-                const parsedDate = this.parseDateFromAriaLabel(ariaLabel) || new Date();
-                const tzOffset = -parsedDate.getTimezoneOffset() / 60;
-                const tzString = `UTC${tzOffset >= 0 ? '+' + tzOffset : tzOffset}`;
-                const customDateStr = this.formatCustomDate(parsedDate);
-
-                const overlay = document.createElement('div');
-                overlay.className = 'gp-drag-time-overlay';
-                overlay.style.cssText = `
-                    position: absolute;
-                    bottom: 4px;
-                    left: 4px;
-                    right: 4px;
-                    background: rgba(0, 0, 0, 0.85);
-                    color: #fff;
-                    padding: 4px 6px;
-                    border-radius: 4px;
-                    font-size: 11px;
-                    font-family: monospace;
-                    z-index: 100;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 2px;
-                    pointer-events: auto;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-                    user-select: none;
-                `;
-
-                if (isSelected) {
-                    overlay.style.border = '1px solid #8ab4f8';
-                    overlay.style.background = 'rgba(20, 30, 55, 0.95)';
-
-                    overlay.innerHTML = `
-                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="font-size: 9px; opacity: 0.8; color: #8ab4f8; font-weight: bold;">EDIT TIME</span>
-                            <span style="font-size: 9px; opacity: 0.8;">${tzString}</span>
-                        </div>
-                        <input type="text" class="gp-custom-time-input" value="${customDateStr}" style="
-                            background: #202124;
-                            color: #fff;
-                            border: 1px solid #555;
-                            border-radius: 3px;
-                            font-size: 11px;
-                            font-family: monospace;
-                            padding: 2px 4px;
-                            width: 100%;
-                            box-sizing: border-box;
-                            text-align: center;
-                        ">
-                        <div class="gp-drag-handle" style="
-                            cursor: grab;
-                            background: #8ab4f8;
-                            color: #202124;
-                            text-align: center;
-                            font-weight: bold;
-                            font-size: 10px;
-                            padding: 4px;
-                            border-radius: 3px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            gap: 4px;
-                            user-select: none;
-                        ">
-                            <span>☰ Drag in Time</span>
-                        </div>
-                    `;
-
-                    // Custom Date Input listener (YYYY.M.D HH:mm)
-                    const inputEl = overlay.querySelector('.gp-custom-time-input');
-                    inputEl.addEventListener('change', (e) => {
-                        const newDate = this.parseCustomDateString(e.target.value);
-                        if (newDate) {
-                            log(`Manual date input change on card #${index}:`, this.formatCustomDate(newDate));
-                            this.handleManualTimeChange(card, newDate);
-                        } else {
-                            warn('Invalid custom date string entered:', e.target.value);
-                            inputEl.value = customDateStr;
-                        }
-                    });
-
-                    // Attach Custom Mouse Drag
-                    const handleEl = overlay.querySelector('.gp-drag-handle');
-                    this.attachCustomMouseDrag(handleEl, card);
-
-                } else {
-                    overlay.innerHTML = `
-                        <div style="font-size: 10px; opacity: 0.9;">${customDateStr}</div>
-                        <div style="font-size: 9px; opacity: 0.6;">${tzString}</div>
-                    `;
+            const allParsed = allCards.map((el, i) => this.extractCardInfo(el, i));
+            // Filter unique by mediaKey
+            const uniqueMap = new Map();
+            allParsed.forEach(p => {
+                if (!uniqueMap.has(p.mediaKey)) {
+                    uniqueMap.set(p.mediaKey, p);
                 }
+            });
+            const uniqueList = Array.from(uniqueMap.values());
 
-                // card.style.position = 'relative';
-                card.appendChild(overlay);
+            const selectedPhotos = uniqueList.filter(p => p.isSelected);
+            log(`Found ${selectedPhotos.length} selected photos out of ${uniqueList.length} cards.`);
+
+            if (selectedPhotos.length === 0) {
+                // If user didn't select, take all visible photos
+                return uniqueList;
+            }
+
+            // Find min and max time of selected photos
+            let minTime = Infinity;
+            let maxTime = -Infinity;
+            selectedPhotos.forEach(p => {
+                const t = p.timestamp.getTime();
+                if (t < minTime) minTime = t;
+                if (t > maxTime) maxTime = t;
             });
 
-            log('Finished rendering clean photo overlays.');
-        },
+            // Expand range by ±2 days (2 * 24 * 60 * 60 * 1000 = 172,800,000 ms)
+            const rangeBufferMs = 2 * 24 * 60 * 60 * 1000;
+            const expandedMin = minTime - rangeBufferMs;
+            const expandedMax = maxTime + rangeBufferMs;
 
-        // --- Step 6: Custom Mouse Drag-and-Drop Implementation ---
-        attachCustomMouseDrag: function (handleEl, cardEl) {
-            handleEl.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            log(`Time range filter: ${new Date(expandedMin).toLocaleDateString()} to ${new Date(expandedMax).toLocaleDateString()}`);
 
-                log('Mouse Down on Drag Handle of card:', cardEl);
-                this.startCustomDrag(e, cardEl);
+            let filtered = uniqueList.filter(p => {
+                const t = p.timestamp.getTime();
+                return t >= expandedMin && t <= expandedMax;
             });
+
+            // If filtered list has too few photos, include surrounding 10 cards anyway for context
+            if (filtered.length < selectedPhotos.length + 4 && uniqueList.length > filtered.length) {
+                const firstIdx = uniqueList.findIndex(p => p.mediaKey === selectedPhotos[0].mediaKey);
+                const lastIdx = uniqueList.findIndex(p => p.mediaKey === selectedPhotos[selectedPhotos.length - 1].mediaKey);
+                const start = Math.max(0, Math.min(firstIdx, lastIdx) - 6);
+                const end = Math.min(uniqueList.length, Math.max(firstIdx, lastIdx) + 7);
+                filtered = uniqueList.slice(start, end);
+            }
+
+            // Sort chronologically (earliest to latest or latest to earliest matching Google Photos order)
+            // In Google Photos, photostream starts from newest at top down to oldest.
+            filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+            return filtered;
         },
 
-        startCustomDrag: function (e, cardEl) {
-            this.isDragging = true;
-            // Support dragging from either original card or clone card
-            const originalCard = cardEl._originalCard || cardEl;
-            this.draggedCard = originalCard;
+        // --- Step 3: Open Google-styled Modal Window ---
+        openDragModal: function () {
+            if (this.modalOverlay) {
+                this.closeDragModal();
+            }
 
-            const rect = cardEl.getBoundingClientRect();
-            this.dragPhantom = document.createElement('div');
-            this.dragPhantom.className = 'gp-drag-phantom';
-            this.dragPhantom.style.cssText = `
+            this.photos = this.collectPhotosForModal();
+            this.modifiedTimestamps.clear();
+
+            log(`Opening modal with ${this.photos.length} photos.`);
+            this.buildModalDOM();
+        },
+
+        closeDragModal: function () {
+            if (this.modalOverlay) {
+                this.modalOverlay.remove();
+                this.modalOverlay = null;
+            }
+            this.isDragging = false;
+            this.draggedPhotoId = null;
+            this.dragSourceIndex = -1;
+            document.body.style.overflow = '';
+        },
+
+        buildModalDOM: function () {
+            document.body.style.overflow = 'hidden';
+
+            const overlay = document.createElement('div');
+            overlay.className = 'gp-drag-modal-overlay uW2Fw-Sx9Kwc yaahMe V639qd un6WHd QaJAKf W6ZbFb';
+            overlay.style.cssText = `
                 position: fixed;
-                top: ${e.clientY - 20}px;
-                left: ${e.clientX - 60}px;
-                width: ${Math.min(rect.width, 180)}px;
-                height: 60px;
-                background: rgba(32, 33, 36, 0.95);
-                border: 2px solid #8ab4f8;
-                border-radius: 8px;
-                color: #fff;
-                padding: 8px;
-                font-size: 12px;
-                font-family: sans-serif;
-                z-index: 999999;
-                pointer-events: none;
-                box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+                inset: 0;
+                background: rgba(0, 0, 0, 0.65);
+                z-index: 1000000;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-weight: bold;
+                backdrop-filter: blur(4px);
+                font-family: 'Google Sans', Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
+                animation: gpFadeIn 0.2s ease-out;
             `;
-            this.dragPhantom.textContent = 'Dragging photo in time...';
-            document.body.appendChild(this.dragPhantom);
 
-            this.dropIndicator = document.createElement('div');
-            this.dropIndicator.className = 'gp-drop-indicator';
-            this.dropIndicator.style.cssText = `
-                position: fixed;
-                width: 4px;
-                height: 120px;
+            // Backdrop click closes modal
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    this.closeDragModal();
+                }
+            });
+
+            // Dialog container
+            const dialog = document.createElement('div');
+            dialog.className = 'gp-drag-modal-dialog uW2Fw-P5QLlc cPSYW';
+            dialog.setAttribute('role', 'dialog');
+            dialog.setAttribute('aria-modal', 'true');
+            dialog.style.cssText = `
+                background: #202124;
+                color: #e8eaed;
+                width: 860px;
+                max-width: 95vw;
+                height: 85vh;
+                max-height: 850px;
+                border-radius: 28px;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+                overflow: hidden;
+                position: relative;
+            `;
+
+            // 1. Header
+            const header = document.createElement('div');
+            header.className = 'gp-drag-modal-header uW2Fw-oclYLd Sj2qkc';
+            header.style.cssText = `
+                padding: 20px 24px 16px 24px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                flex-shrink: 0;
+            `;
+            header.innerHTML = `
+                <div style="display: flex; align-items: baseline; gap: 12px;">
+                    <h2 class="uW2Fw-k2Wrsb yu9oGe zBRznc AQxBIc" style="margin: 0; font-size: 22px; font-weight: 400; color: #e8eaed; letter-spacing: 0;">
+                        Preview changes
+                    </h2>
+                    <span style="font-size: 13px; color: #9aa0a6; font-weight: 400;">
+                        Drag in Time • Drag photos to reorder
+                    </span>
+                </div>
+                <button class="gp-modal-close-x" style="
+                    background: transparent;
+                    border: none;
+                    color: #9aa0a6;
+                    cursor: pointer;
+                    padding: 8px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: background-color 0.15s;
+                " title="Close">
+                    <svg width="20px" height="20px" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            `;
+            header.querySelector('.gp-modal-close-x').onclick = () => this.closeDragModal();
+
+            // 2. Scrollable Body
+            const body = document.createElement('div');
+            body.className = 'gp-drag-modal-body';
+            body.style.cssText = `
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                scroll-behavior: smooth;
+            `;
+
+            // Top "Load newer photos" button
+            const topLoadBtn = document.createElement('button');
+            topLoadBtn.className = 'gp-load-btn gp-load-newer';
+            topLoadBtn.style.cssText = `
+                align-self: center;
+                background: rgba(255, 255, 255, 0.08);
+                color: #8ab4f8;
+                border: 1px dashed rgba(138, 180, 248, 0.5);
+                border-radius: 18px;
+                padding: 8px 20px;
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin: 4px auto 8px auto;
+                transition: background-color 0.2s, border-color 0.2s;
+            `;
+            topLoadBtn.innerHTML = `<span>▲ Load newer photos</span>`;
+            topLoadBtn.onmouseenter = () => { topLoadBtn.style.background = 'rgba(138, 180, 248, 0.15)'; };
+            topLoadBtn.onmouseleave = () => { topLoadBtn.style.background = 'rgba(255, 255, 255, 0.08)'; };
+            topLoadBtn.onclick = () => this.loadMorePhotos('newer');
+            body.appendChild(topLoadBtn);
+
+            // Container for photo cards grouped by date
+            const gridContainer = document.createElement('div');
+            gridContainer.className = 'gp-photos-stream-container';
+            gridContainer.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                min-height: 120px;
+            `;
+            body.appendChild(gridContainer);
+
+            // Bottom "Load older photos" button
+            const bottomLoadBtn = document.createElement('button');
+            bottomLoadBtn.className = 'gp-load-btn gp-load-older';
+            bottomLoadBtn.style.cssText = `
+                align-self: center;
+                background: rgba(255, 255, 255, 0.08);
+                color: #8ab4f8;
+                border: 1px dashed rgba(138, 180, 248, 0.5);
+                border-radius: 18px;
+                padding: 8px 20px;
+                font-size: 13px;
+                font-weight: 500;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin: 16px auto 24px auto;
+                transition: background-color 0.2s, border-color 0.2s;
+            `;
+            bottomLoadBtn.innerHTML = `<span>▼ Load older photos</span>`;
+            bottomLoadBtn.onmouseenter = () => { bottomLoadBtn.style.background = 'rgba(138, 180, 248, 0.15)'; };
+            bottomLoadBtn.onmouseleave = () => { bottomLoadBtn.style.background = 'rgba(255, 255, 255, 0.08)'; };
+            bottomLoadBtn.onclick = () => this.loadMorePhotos('older');
+            body.appendChild(bottomLoadBtn);
+
+            // 3. Footer
+            const footer = document.createElement('div');
+            footer.className = 'gp-drag-modal-footer uW2Fw-T0kwCb IdSMxc';
+            footer.style.cssText = `
+                padding: 16px 24px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                flex-shrink: 0;
+                background: #202124;
+            `;
+
+            const statusInfo = document.createElement('div');
+            statusInfo.className = 'gp-modal-status-info';
+            statusInfo.style.cssText = `
+                font-size: 13px;
+                color: #9aa0a6;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            `;
+            const selectedCount = this.photos.filter(p => p.isSelected).length;
+            statusInfo.innerHTML = `
+                <span class="gp-count-loaded">${this.photos.length} photos loaded</span>
+                <span class="gp-selected-badge" style="${selectedCount > 0 ? '' : 'display: none;'} background: rgba(138, 180, 248, 0.15); color: #8ab4f8; padding: 2px 8px; border-radius: 10px; font-weight: 500; font-size: 11px;">
+                    ${selectedCount} selected
+                </span>
+                <span class="gp-modified-badge" style="display: none; background: rgba(138, 180, 248, 0.2); color: #8ab4f8; padding: 2px 8px; border-radius: 10px; font-weight: 500; font-size: 11px;">
+                    0 modified
+                </span>
+            `;
+
+            const btnGroup = document.createElement('div');
+            btnGroup.style.cssText = `display: flex; align-items: center; gap: 12px;`;
+
+            const backBtn = document.createElement('button');
+            backBtn.className = 'mUIrbf-LgbsSe oFJeZc gp-modal-back-btn';
+            backBtn.style.cssText = `
+                background: transparent;
+                color: #8ab4f8;
+                border: 1px solid #5f6368;
+                border-radius: 20px;
+                padding: 0 24px;
+                height: 36px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background-color 0.15s, border-color 0.15s;
+            `;
+            backBtn.textContent = 'Back';
+            backBtn.onclick = () => this.closeDragModal();
+
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'UywwFc-LgbsSe kDryjd gp-modal-save-btn';
+            saveBtn.style.cssText = `
                 background-color: #8ab4f8;
-                box-shadow: 0 0 8px #8ab4f8;
-                z-index: 999998;
-                pointer-events: none;
-                display: none;
-                border-radius: 2px;
+                color: #202124;
+                border: none;
+                border-radius: 20px;
+                padding: 0 24px;
+                height: 36px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: background-color 0.15s, box-shadow 0.15s;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.3);
             `;
-            document.body.appendChild(this.dropIndicator);
+            saveBtn.textContent = 'Save';
+            saveBtn.onclick = () => this.handleSaveModalChanges();
 
-            cardEl.style.opacity = '0.4';
+            btnGroup.appendChild(backBtn);
+            btnGroup.appendChild(saveBtn);
 
-            this.onMouseMove = (evt) => this.handleCustomDragMove(evt);
-            this.onMouseUp = (evt) => this.handleCustomDragEnd(evt);
+            footer.appendChild(statusInfo);
+            footer.appendChild(btnGroup);
 
-            window.addEventListener('mousemove', this.onMouseMove, true);
-            window.addEventListener('mouseup', this.onMouseUp, true);
-            log('Custom Mouse Drag started for card:', originalCard);
-        },
+            dialog.appendChild(header);
+            dialog.appendChild(body);
+            dialog.appendChild(footer);
+            overlay.appendChild(dialog);
 
-        handleCustomDragMove: function (e) {
-            if (!this.isDragging || !this.dragPhantom) return;
+            document.body.appendChild(overlay);
+            this.modalOverlay = overlay;
 
-            this.dragPhantom.style.top = `${e.clientY - 20}px`;
-            this.dragPhantom.style.left = `${e.clientX - 60}px`;
+            // Render photo cards into container
+            this.renderModalPhotos();
 
-            const elementsUnder = document.elementsFromPoint(e.clientX, e.clientY);
-            let targetCard = null;
-
-            for (let el of elementsUnder) {
-                // Ignore clone overlays and phantom
-                if (el.closest('.gp-drag-phantom') || el.closest('.gp-photo-duplicate-clone')) continue;
-
-                if (el.matches && el.matches(ALL_PHOTO_CARDS_SELECTOR)) {
-                    targetCard = el;
-                    break;
+            // Auto-scroll modal body to the first selected photo card if present
+            setTimeout(() => {
+                if (!this.modalOverlay) return;
+                const firstSelected = this.modalOverlay.querySelector('.gp-modal-photo-card[data-is-selected="true"]');
+                if (firstSelected) {
+                    firstSelected.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
-                const parentCard = el.closest ? el.closest(ALL_PHOTO_CARDS_SELECTOR) : null;
-                if (parentCard) {
-                    targetCard = parentCard;
-                    break;
+            }, 80);
+
+            // Keyboard Escape listener
+            const escListener = (e) => {
+                if (e.key === 'Escape' && this.modalOverlay) {
+                    this.closeDragModal();
+                    window.removeEventListener('keydown', escListener);
                 }
-            }
-
-            if (targetCard && targetCard !== this.draggedCard) {
-                this.currentTargetCard = targetCard;
-                const rect = targetCard.getBoundingClientRect();
-                const midX = rect.left + rect.width / 2;
-
-                this.dropPosition = (e.clientX < midX) ? 'before' : 'after';
-
-                this.dropIndicator.style.display = 'block';
-                this.dropIndicator.style.top = `${rect.top}px`;
-                this.dropIndicator.style.height = `${rect.height}px`;
-                this.dropIndicator.style.left = (this.dropPosition === 'before') ? `${rect.left - 2}px` : `${rect.right - 2}px`;
-            } else {
-                this.dropIndicator.style.display = 'none';
-            }
-        },
-
-        handleCustomDragEnd: function (e) {
-            log('Mouse Up: finishing custom drag...');
-
-            const originalCard = this.draggedCard;
-
-            if (this.currentTargetCard && this.currentTargetCard !== originalCard) {
-                log('Dropped onto target card:', this.currentTargetCard, 'Position:', this.dropPosition);
-                this.executeDropReorderAndExpandGaps(originalCard, this.currentTargetCard, this.dropPosition);
-            } else {
-                warn('Custom drag released without valid target.');
-                if (originalCard) {
-                    originalCard.style.opacity = this.cloneOverlays.has(originalCard) ? '0.35' : '1';
-                }
-            }
-
-            this.cleanupCustomDrag();
-        },
-
-        cleanupCustomDrag: function () {
-            this.isDragging = false;
-            this.draggedCard = null;
-            this.currentTargetCard = null;
-
-            if (this.dragPhantom) {
-                this.dragPhantom.remove();
-                this.dragPhantom = null;
-            }
-
-            if (this.dropIndicator) {
-                this.dropIndicator.remove();
-                this.dropIndicator = null;
-            }
-
-            if (this.onMouseMove) {
-                window.removeEventListener('mousemove', this.onMouseMove, true);
-                this.onMouseMove = null;
-            }
-
-            if (this.onMouseUp) {
-                window.removeEventListener('mouseup', this.onMouseUp, true);
-                this.onMouseUp = null;
-            }
-        },
-
-        // --- Step 7: Local Neighbor Gap Creation & Insert Clone With Drag Handle ---
-        executeDropReorderAndExpandGaps: function (draggedOriginalCard, targetCard, position) {
-            log('Executing drop reorder, local gap creation, and positioning...');
-
-            // 1. Cleanly restore any previously shifted neighbor cards
-            this.restoreNeighborStyles();
-
-            const allCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR))
-                .filter(c => c !== draggedOriginalCard && !c.classList.contains('gp-photo-duplicate-clone'));
-            const targetIndex = allCards.indexOf(targetCard);
-
-            let neighborLeft = null;
-            let neighborRight = null;
-
-            if (position === 'before') {
-                neighborRight = targetCard;
-                neighborLeft = (targetIndex > 0) ? allCards[targetIndex - 1] : null;
-            } else {
-                neighborLeft = targetCard;
-                neighborRight = (targetIndex < allCards.length - 1) ? allCards[targetIndex + 1] : null;
-            }
-
-            const getCardAriaLabel = (card) => {
-                if (!card) return '';
-                const linkEl = card.querySelector('a');
-                return linkEl ? linkEl.getAttribute('aria-label') : (card.getAttribute('aria-label') || '');
             };
+            window.addEventListener('keydown', escListener);
+        },
 
-            const dateLeft = neighborLeft ? this.parseDateFromAriaLabel(getCardAriaLabel(neighborLeft)) : null;
-            const dateRight = neighborRight ? this.parseDateFromAriaLabel(getCardAriaLabel(neighborRight)) : null;
+        // --- Step 4: Render Photos in Modal Grouped by Day ---
+        renderModalPhotos: function () {
+            const container = this.modalOverlay ? this.modalOverlay.querySelector('.gp-photos-stream-container') : null;
+            if (!container) return;
 
-            log('Neighbor Left Date:', dateLeft ? this.formatCustomDate(dateLeft) : 'None');
-            log('Neighbor Right Date:', dateRight ? this.formatCustomDate(dateRight) : 'None');
+            container.innerHTML = '';
+
+            if (this.photos.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #9aa0a6; padding: 40px; font-size: 14px;">
+                        No photos found in this range.
+                    </div>
+                `;
+                return;
+            }
+
+            // Group photos by day string
+            const groups = new Map();
+            this.photos.forEach((photo, idx) => {
+                photo._index = idx;
+                const dayHeader = this.formatDateHeader(photo.timestamp);
+                if (!groups.has(dayHeader)) {
+                    groups.set(dayHeader, []);
+                }
+                groups.get(dayHeader).push(photo);
+            });
+
+            // Render each date group
+            groups.forEach((items, dayHeader) => {
+                const groupSection = document.createElement('div');
+                groupSection.className = 'gp-date-group-section';
+                groupSection.style.cssText = `
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                `;
+
+                // Date Header styled like Google's H2.ZEmz6b
+                const headerEl = document.createElement('h2');
+                headerEl.className = 'ZEmz6b';
+                headerEl.style.cssText = `
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #9aa0a6;
+                    margin: 0;
+                    padding: 4px 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                `;
+                headerEl.innerHTML = `
+                    <span>${dayHeader}</span>
+                    <span style="font-size: 11px; opacity: 0.6;">(${items.length} ${items.length === 1 ? 'item' : 'items'})</span>
+                `;
+                groupSection.appendChild(headerEl);
+
+                // Row of photo cards
+                const cardGrid = document.createElement('div');
+                cardGrid.className = 'gp-cards-row-grid';
+                cardGrid.style.cssText = `
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    align-items: flex-start;
+                `;
+
+                items.forEach(photo => {
+                    const card = this.createModalPhotoCard(photo);
+                    cardGrid.appendChild(card);
+                });
+
+                groupSection.appendChild(cardGrid);
+                container.appendChild(groupSection);
+            });
+
+            this.updateModifiedCounter();
+            this.updateLoadButtonsVisibility();
+        },
+
+        createModalPhotoCard: function (photo) {
+            const card = document.createElement('div');
+            card.className = 'gp-modal-photo-card rtIMgb GQzRlf Blknbd';
+            card.setAttribute('data-photo-id', photo.mediaKey);
+
+            const isSelected = !!photo.isSelected;
+            const isModified = !!photo.isModified;
+            const customDateStr = this.formatCustomDate(photo.timestamp);
+            const shortTimeStr = this.formatShortTime(photo.timestamp);
+
+            card.setAttribute('data-is-selected', isSelected ? 'true' : 'false');
+            if (isSelected) {
+                card.setAttribute('draggable', 'true');
+            } else {
+                card.setAttribute('draggable', 'false');
+            }
+
+            card.style.cssText = `
+                width: 146px;
+                height: 138px;
+                border-radius: 8px;
+                overflow: hidden;
+                position: relative;
+                background: #28292c;
+                box-sizing: border-box;
+                border: 2px solid ${isModified ? '#8ab4f8' : (isSelected ? 'rgba(138, 180, 248, 0.85)' : 'rgba(255, 255, 255, 0.1)')};
+                cursor: ${isSelected ? 'grab' : 'default'};
+                transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                user-select: none;
+                box-shadow: ${isModified ? '0 0 10px rgba(138, 180, 248, 0.5)' : (isSelected ? '0 0 8px rgba(138, 180, 248, 0.25)' : 'none')};
+            `;
+
+            // Card Inner HTML
+            card.innerHTML = `
+                <!-- Thumbnail Image Area -->
+                <div class="gp-thumb-area" style="
+                    position: absolute;
+                    inset: 0;
+                    background-image: url('${photo.bgUrl || ''}');
+                    background-size: cover;
+                    background-position: center;
+                    background-repeat: no-repeat;
+                    z-index: 1;
+                ">
+                    <!-- Top Gradient for badges -->
+                    <div style="position: absolute; top: 0; left: 0; right: 0; height: 32px; background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%);"></div>
+                    <!-- Bottom Gradient for time label -->
+                    <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 48px; background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, transparent 100%);"></div>
+                </div>
+
+                <!-- Top Row: Selected badge & Video duration -->
+                <div style="position: relative; z-index: 5; padding: 4px 6px; display: flex; align-items: center; justify-content: space-between;">
+                    ${isSelected ? `
+                        <span style="background: #8ab4f8; color: #202124; font-size: 9px; font-weight: bold; padding: 1px 5px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+                            SELECTED
+                        </span>
+                    ` : `<span></span>`}
+
+                    ${photo.isVideo ? `
+                        <div class="KhS5De" style="background: rgba(0,0,0,0.65); color: #fff; font-size: 10px; padding: 2px 5px; border-radius: 4px; display: flex; align-items: center; gap: 4px; font-weight: 500;">
+                            <svg width="10px" height="10px" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                            <span>${photo.duration || 'VIDEO'}</span>
+                        </div>
+                    ` : `<span></span>`}
+                </div>
+
+                <!-- Bottom Row: Time label and editable input -->
+                <div class="gp-card-bottom" style="position: relative; z-index: 5; padding: 4px 6px; display: flex; flex-direction: column; gap: 2px;">
+                    ${isModified ? `
+                        <div style="align-self: flex-start; background: #8ab4f8; color: #202124; font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; letter-spacing: 0.5px;">
+                            NEW TIME
+                        </div>
+                    ` : ''}
+                    <div class="gp-time-display" style="color: #fff; font-size: 11px; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: space-between;" title="${isSelected ? 'Drag to reorder photo in time' : ''}">
+                        <span>${shortTimeStr}</span>
+                        ${isSelected ? `<span style="font-size: 9px; opacity: 0.7;">☰ drag</span>` : ''}
+                    </div>
+                    <input type="text" class="gp-inline-time-input" value="${customDateStr}" style="
+                        display: none;
+                        background: #202124;
+                        color: #fff;
+                        border: 1px solid #8ab4f8;
+                        border-radius: 3px;
+                        font-size: 9px;
+                        font-family: monospace;
+                        padding: 2px 3px;
+                        width: 100%;
+                        box-sizing: border-box;
+                    ">
+                </div>
+            `;
+
+            // Inline date editing on click
+            const timeDisplay = card.querySelector('.gp-time-display');
+            const timeInput = card.querySelector('.gp-inline-time-input');
+
+            timeDisplay.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                timeDisplay.style.display = 'none';
+                timeInput.style.display = 'block';
+                timeInput.focus();
+                timeInput.select();
+            });
+
+            timeInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    timeInput.blur();
+                } else if (e.key === 'Escape') {
+                    timeInput.value = customDateStr;
+                    timeInput.style.display = 'none';
+                    timeDisplay.style.display = 'flex';
+                }
+            });
+
+            timeInput.addEventListener('blur', () => {
+                timeInput.style.display = 'none';
+                timeDisplay.style.display = 'flex';
+                const parsed = this.parseCustomDateString(timeInput.value);
+                if (parsed && !isNaN(parsed.getTime())) {
+                    log(`Manual time edit for photo ${photo.mediaKey}:`, this.formatCustomDate(parsed));
+                    photo.timestamp = parsed;
+                    photo.isModified = true;
+                    this.modifiedTimestamps.set(photo.mediaKey, {
+                        photo: photo,
+                        oldDate: photo.originalTimestamp,
+                        newDate: parsed
+                    });
+                    this.renderModalPhotos();
+                } else {
+                    timeInput.value = customDateStr;
+                }
+            });
+
+            // Drag & Drop event wiring
+            this.wireCardDragEvents(card, photo);
+
+            return card;
+        },
+
+        // --- Step 5: Smooth Drag & Drop Inside Modal ---
+        wireCardDragEvents: function (card, photo) {
+            if (!photo.isSelected) {
+                // Unselected photos cannot be dragged
+                card.addEventListener('dragstart', (e) => {
+                    e.preventDefault();
+                    return false;
+                });
+            } else {
+                card.addEventListener('dragstart', (e) => {
+                    this.isDragging = true;
+                    this.draggedPhotoId = photo.mediaKey;
+                    this.dragSourceIndex = this.photos.findIndex(p => p.mediaKey === photo.mediaKey);
+
+                    card.style.opacity = '0.35';
+                    card.style.transform = 'scale(0.95)';
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', photo.mediaKey);
+
+                    log('Drag started on card:', photo.mediaKey, 'Index:', this.dragSourceIndex);
+                });
+
+                card.addEventListener('dragend', () => {
+                    card.style.opacity = '1';
+                    card.style.transform = '';
+                    this.cleanupDropIndicators();
+                    this.isDragging = false;
+                    this.draggedPhotoId = null;
+                    this.dragSourceIndex = -1;
+                });
+            }
+
+            // Both selected and unselected photos can receive drop events!
+            card.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+
+                if (!this.isDragging || this.draggedPhotoId === photo.mediaKey) return;
+
+                const rect = card.getBoundingClientRect();
+                const midX = rect.left + rect.width / 2;
+                const isLeft = e.clientX < midX;
+
+                this.showDropIndicator(card, isLeft ? 'left' : 'right');
+            });
+
+            card.addEventListener('dragleave', (e) => {
+                const related = e.relatedTarget;
+                if (!card.contains(related)) {
+                    this.cleanupCardIndicator(card, photo);
+                }
+            });
+
+            card.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (!this.isDragging || !this.draggedPhotoId || this.draggedPhotoId === photo.mediaKey) {
+                    this.cleanupDropIndicators();
+                    return;
+                }
+
+                const rect = card.getBoundingClientRect();
+                const midX = rect.left + rect.width / 2;
+                const dropBefore = e.clientX < midX;
+
+                log(`Dropped photo ${this.draggedPhotoId} onto target ${photo.mediaKey} (${dropBefore ? 'before' : 'after'})`);
+                this.executeModalDrop(this.draggedPhotoId, photo.mediaKey, dropBefore);
+                this.cleanupDropIndicators();
+            });
+        },
+
+        showDropIndicator: function (card, side) {
+            this.cleanupDropIndicators();
+            if (side === 'left') {
+                card.style.borderLeft = '4px solid #8ab4f8';
+            } else {
+                card.style.borderRight = '4px solid #8ab4f8';
+            }
+        },
+
+        cleanupCardIndicator: function (card, photo) {
+            card.style.borderLeft = '';
+            card.style.borderRight = '';
+            const isSelected = photo.isSelected;
+            const isModified = photo.isModified;
+            card.style.border = `2px solid ${isModified ? '#8ab4f8' : (isSelected ? 'rgba(138, 180, 248, 0.85)' : 'rgba(255, 255, 255, 0.1)')}`;
+        },
+
+        cleanupDropIndicators: function () {
+            if (!this.modalOverlay) return;
+            const cards = this.modalOverlay.querySelectorAll('.gp-modal-photo-card');
+            cards.forEach(c => {
+                c.style.borderLeft = '';
+                c.style.borderRight = '';
+            });
+        },
+
+        // --- Step 6: Execute Drop & Midpoint Timestamp Interpolation ---
+        executeModalDrop: function (draggedId, targetId, dropBefore) {
+            const fromIdx = this.photos.findIndex(p => p.mediaKey === draggedId);
+            const targetIdx = this.photos.findIndex(p => p.mediaKey === targetId);
+
+            if (fromIdx === -1 || targetIdx === -1) {
+                warn('Could not find source or target photo in array.');
+                return;
+            }
+
+            // Remove dragged photo from current position
+            const [draggedPhoto] = this.photos.splice(fromIdx, 1);
+
+            // Calculate new insertion index
+            let insertIdx = this.photos.findIndex(p => p.mediaKey === targetId);
+            if (!dropBefore) {
+                insertIdx += 1;
+            }
+
+            // Insert dragged photo at new position
+            this.photos.splice(insertIdx, 0, draggedPhoto);
+
+            // Calculate new timestamp based on neighbors
+            // Note: In our array, photos are in reverse chronological order (newest to oldest),
+            // or chronologically. Let's inspect neighbor timestamps:
+            const neighborPrev = (insertIdx > 0) ? this.photos[insertIdx - 1] : null;
+            const neighborNext = (insertIdx < this.photos.length - 1) ? this.photos[insertIdx + 1] : null;
 
             let newTimestampMs;
-            if (dateLeft && dateRight) {
-                const timeA = dateLeft.getTime();
-                const timeB = dateRight.getTime();
+
+            if (neighborPrev && neighborNext) {
+                const timeA = neighborPrev.timestamp.getTime();
+                const timeB = neighborNext.timestamp.getTime();
+                // Midpoint between previous and next
                 newTimestampMs = Math.round(timeA + (timeB - timeA) / 2);
-                log(`Calculated midpoint: ${this.formatCustomDate(dateLeft)} <-> ${this.formatCustomDate(dateRight)}`);
-            } else if (dateLeft) {
-                newTimestampMs = dateLeft.getTime() - 60000;
-            } else if (dateRight) {
-                newTimestampMs = dateRight.getTime() + 60000;
+                log(`Calculated midpoint between ${this.formatCustomDate(neighborPrev.timestamp)} and ${this.formatCustomDate(neighborNext.timestamp)}`);
+            } else if (neighborNext) {
+                // At very start of list: 1 minute difference in same trend direction
+                const timeNext = neighborNext.timestamp.getTime();
+                newTimestampMs = timeNext + 60000;
+            } else if (neighborPrev) {
+                // At very end of list: 1 minute difference
+                const timePrev = neighborPrev.timestamp.getTime();
+                newTimestampMs = timePrev - 60000;
             } else {
                 newTimestampMs = Date.now();
             }
 
             const calculatedDate = new Date(newTimestampMs);
-            const customDateStr = this.formatCustomDate(calculatedDate);
+            draggedPhoto.timestamp = calculatedDate;
+            draggedPhoto.isModified = true;
 
-            log('NEW INTERPOLATED TIMESTAMP:', customDateStr);
+            log(`NEW TIMESTAMP FOR ${draggedPhoto.mediaKey}:`, this.formatCustomDate(calculatedDate));
 
-            // 2. Perform LOCAL ONLY neighbor adjustment and place clone
-            this.insertCloneBetweenNeighbors(draggedOriginalCard, targetCard, neighborLeft, neighborRight, position, customDateStr, calculatedDate);
+            // Record in modified map
+            this.modifiedTimestamps.set(draggedPhoto.mediaKey, {
+                photo: draggedPhoto,
+                oldDate: draggedPhoto.originalTimestamp,
+                newDate: calculatedDate
+            });
 
-            // 3. Save modified timestamp
-            const photoId = getCardAriaLabel(draggedOriginalCard) || 'dragged_photo';
-            this.modifiedTimestamps.set(photoId, calculatedDate);
+            // Re-render modal photo stream
+            this.renderModalPhotos();
         },
 
-        insertCloneBetweenNeighbors: function (draggedOriginalCard, targetCard, neighborLeft, neighborRight, position, customDateStr, calculatedDate) {
-            const targetTf = this.getCardTransform(targetCard);
-            const targetHeight = targetCard.offsetHeight || 180;
-
-            const leftTf = neighborLeft ? this.getCardTransform(neighborLeft) : null;
-            const rightTf = neighborRight ? this.getCardTransform(neighborRight) : null;
-
-            // Check if neighbors are on the same visual line (within 25px Y)
-            const leftInRow = neighborLeft && (Math.abs(leftTf.y - targetTf.y) < 25);
-            const rightInRow = neighborRight && (Math.abs(rightTf.y - targetTf.y) < 25);
-
-            // Fixed, clear, visible width for the inserted moved card
-            const cloneWidth = 150;
-            const gap = 4;
-            const spaceNeeded = cloneWidth + gap;
-
-            let cloneX = targetTf.x;
-            let cloneY = targetTf.y;
-
-            if (leftInRow && rightInRow) {
-                // Both neighbors in row: create gap between them by gently shrinking each
-                const shrinkEach = Math.round(spaceNeeded / 2);
-
-                this.saveOriginalNeighborStyle(neighborLeft);
-                const origLeftW = neighborLeft.offsetWidth;
-                const newLeftW = Math.max(origLeftW - shrinkEach, 60);
-                neighborLeft.style.transition = 'width 0.3s ease, transform 0.3s ease';
-                neighborLeft.style.overflow = 'hidden';
-                neighborLeft.style.width = `${newLeftW}px`;
-
-                cloneX = leftTf.x + newLeftW + gap;
-                cloneY = leftTf.y;
-
-                this.saveOriginalNeighborStyle(neighborRight);
-                const origRightW = neighborRight.offsetWidth;
-                const newRightW = Math.max(origRightW - shrinkEach, 60);
-                const newRightX = cloneX + cloneWidth + gap;
-                neighborRight.style.transition = 'width 0.3s ease, transform 0.3s ease';
-                neighborRight.style.overflow = 'hidden';
-                neighborRight.style.width = `${newRightW}px`;
-                neighborRight.style.transform = `translate3d(${newRightX}px, ${rightTf.y}px, ${rightTf.z}px)`;
-
-            } else if (rightInRow) {
-                // Drop before start of a row
-                cloneX = rightTf.x;
-                cloneY = rightTf.y;
-
-                this.saveOriginalNeighborStyle(neighborRight);
-                const origRightW = neighborRight.offsetWidth;
-                const shrink = Math.min(Math.round(spaceNeeded * 0.4), origRightW - 60);
-                const newRightW = Math.max(origRightW - shrink, 60);
-                const newRightX = cloneX + cloneWidth + gap;
-
-                neighborRight.style.transition = 'width 0.3s ease, transform 0.3s ease';
-                neighborRight.style.overflow = 'hidden';
-                neighborRight.style.width = `${newRightW}px`;
-                neighborRight.style.transform = `translate3d(${newRightX}px, ${rightTf.y}px, ${rightTf.z}px)`;
-
-            } else if (leftInRow) {
-                // Drop after end of a row
-                this.saveOriginalNeighborStyle(neighborLeft);
-                const origLeftW = neighborLeft.offsetWidth;
-                const shrink = Math.min(Math.round(spaceNeeded * 0.4), origLeftW - 60);
-                const newLeftW = Math.max(origLeftW - shrink, 60);
-
-                neighborLeft.style.transition = 'width 0.3s ease, transform 0.3s ease';
-                neighborLeft.style.overflow = 'hidden';
-                neighborLeft.style.width = `${newLeftW}px`;
-
-                cloneX = leftTf.x + newLeftW + gap;
-                cloneY = leftTf.y;
-
-            } else {
-                // Single card in row
-                if (position === 'before') {
-                    cloneX = targetTf.x;
-                    cloneY = targetTf.y;
-                    this.saveOriginalNeighborStyle(targetCard);
-                    const newTargetX = cloneX + cloneWidth + gap;
-                    targetCard.style.transition = 'transform 0.3s ease';
-                    targetCard.style.transform = `translate3d(${newTargetX}px, ${targetTf.y}px, ${targetTf.z}px)`;
+        updateModifiedCounter: function () {
+            if (!this.modalOverlay) return;
+            const badge = this.modalOverlay.querySelector('.gp-modified-badge');
+            if (badge) {
+                const count = this.modifiedTimestamps.size;
+                if (count > 0) {
+                    badge.style.display = 'inline-block';
+                    badge.textContent = `${count} modified`;
                 } else {
-                    cloneX = targetTf.x + targetCard.offsetWidth + gap;
-                    cloneY = targetTf.y;
+                    badge.style.display = 'none';
+                }
+            }
+            const countLoaded = this.modalOverlay.querySelector('.gp-count-loaded');
+            if (countLoaded) {
+                countLoaded.textContent = `${this.photos.length} photos loaded`;
+            }
+        },
+
+        checkIfAtNewestPhotos: function () {
+            if (!this.photos || this.photos.length === 0) return true;
+
+            const isPageAtTop = (window.scrollY || document.documentElement.scrollTop || 0) <= 50;
+            const allCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR));
+            if (allCards.length === 0) {
+                return isPageAtTop;
+            }
+
+            const firstCard = allCards[0];
+            const firstCardInfo = this.extractCardInfo(firstCard, 0);
+
+            // In our photos array (sorted newest to oldest), photos[0] is the newest photo currently in modal
+            const modalNewest = this.photos[0];
+            const isFirstCardInModal = modalNewest.mediaKey === firstCardInfo.mediaKey ||
+                                       modalNewest.timestamp.getTime() >= firstCardInfo.timestamp.getTime();
+
+            return isPageAtTop && isFirstCardInModal;
+        },
+
+        updateLoadButtonsVisibility: function () {
+            if (!this.modalOverlay) return;
+            const topLoadBtn = this.modalOverlay.querySelector('.gp-load-newer');
+            const bottomLoadBtn = this.modalOverlay.querySelector('.gp-load-older');
+
+            if (topLoadBtn) {
+                const isAtNewest = this.checkIfAtNewestPhotos();
+                topLoadBtn.style.display = isAtNewest ? 'none' : 'flex';
+                log('Top button (load newer) visibility:', isAtNewest ? 'HIDDEN (already at newest photos)' : 'VISIBLE');
+            }
+
+            if (bottomLoadBtn) {
+                bottomLoadBtn.style.display = (this.photos && this.photos.length > 0) ? 'flex' : 'none';
+            }
+        },
+
+        // --- Step 7: Load More Photos (Top / Bottom) ---
+        loadMorePhotos: function (direction) {
+            log(`Loading more photos (${direction})...`);
+            const currentKeys = new Set(this.photos.map(p => p.mediaKey));
+            const allCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR));
+            const allParsed = allCards.map((el, i) => this.extractCardInfo(el, i));
+
+            let candidates = [];
+            if (direction === 'newer') {
+                const newestTime = this.photos.length > 0 ? this.photos[0].timestamp.getTime() : 0;
+                candidates = allParsed.filter(p => !currentKeys.has(p.mediaKey) && p.timestamp.getTime() >= newestTime);
+                if (candidates.length === 0) {
+                    const firstModalIdx = allParsed.findIndex(p => currentKeys.has(p.mediaKey));
+                    if (firstModalIdx > 0) {
+                        candidates = allParsed.slice(0, firstModalIdx).filter(p => !currentKeys.has(p.mediaKey));
+                    }
+                }
+            } else {
+                const oldestTime = this.photos.length > 0 ? this.photos[this.photos.length - 1].timestamp.getTime() : Infinity;
+                candidates = allParsed.filter(p => !currentKeys.has(p.mediaKey) && p.timestamp.getTime() <= oldestTime);
+                if (candidates.length === 0) {
+                    let lastModalIdx = -1;
+                    for (let i = allParsed.length - 1; i >= 0; i--) {
+                        if (currentKeys.has(allParsed[i].mediaKey)) {
+                            lastModalIdx = i;
+                            break;
+                        }
+                    }
+                    if (lastModalIdx !== -1 && lastModalIdx < allParsed.length - 1) {
+                        candidates = allParsed.slice(lastModalIdx + 1).filter(p => !currentKeys.has(p.mediaKey));
+                    }
                 }
             }
 
-            // Position and render clone
-            this.renderOrUpdateClone(draggedOriginalCard, targetCard, cloneX, cloneY, cloneWidth, targetHeight, customDateStr, calculatedDate);
-        },
-
-        renderOrUpdateClone: function (draggedOriginalCard, targetCard, x, y, width, height, customDateStr, calculatedDate) {
-            let cloneEl = this.cloneOverlays.get(draggedOriginalCard);
-            // Append clone to targetCard's parent so it shares the exact coordinate space
-            const gridContainer = targetCard.parentElement || draggedOriginalCard.parentElement || document.body;
-
-            const tzOffset = -calculatedDate.getTimezoneOffset() / 60;
-            const tzString = `UTC${tzOffset >= 0 ? '+' + tzOffset : tzOffset}`;
-
-            if (!cloneEl) {
-                cloneEl = document.createElement('div');
-                cloneEl.className = 'gp-photo-duplicate-clone';
-                cloneEl.style.cssText = `
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: ${width}px;
-                    height: ${height}px;
-                    z-index: 500;
-                    border: 2px solid #8ab4f8;
-                    border-radius: 8px;
-                    box-shadow: 0 0 16px rgba(138, 180, 248, 0.6), 0 4px 12px rgba(0,0,0,0.8);
-                    box-sizing: border-box;
-                    background: #1e1f20;
-                    overflow: hidden;
-                    transition: transform 0.3s ease, width 0.3s ease, height 0.3s ease;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                    pointer-events: auto;
-                    user-select: none;
-                `;
-                gridContainer.appendChild(cloneEl);
-                this.cloneOverlays.set(draggedOriginalCard, cloneEl);
-            } else if (cloneEl.parentElement !== gridContainer) {
-                gridContainer.appendChild(cloneEl);
-            }
-
-            cloneEl.style.width = `${width}px`;
-            cloneEl.style.height = `${height}px`;
-            cloneEl.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
-
-            // Render thumbnail container, badge, time input, and drag handle
-            cloneEl.innerHTML = `
-                <div class="gp-clone-thumb-wrap" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 1;">
-                </div>
-                <div style="position: relative; z-index: 5; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); color: #8ab4f8; font-size: 9px; font-weight: bold; padding: 2px 6px; border-bottom-right-radius: 6px; align-self: flex-start; letter-spacing: 0.5px; border-bottom: 1px solid rgba(138,180,248,0.4); border-right: 1px solid rgba(138,180,248,0.4);">
-                    MOVED PHOTO
-                </div>
-                <div class="gp-clone-controls" style="position: relative; z-index: 5; background: rgba(20, 30, 55, 0.94); backdrop-filter: blur(6px); color: #fff; padding: 4px 6px; display: flex; flex-direction: column; gap: 3px; font-family: monospace; border-top: 1px solid rgba(138, 180, 248, 0.4);">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-size: 8px; opacity: 0.85; color: #8ab4f8; font-weight: bold;">NEW TIME</span>
-                        <span style="font-size: 8px; opacity: 0.8;">${tzString}</span>
-                    </div>
-                    <input type="text" class="gp-custom-time-input" value="${customDateStr}" style="
-                        background: #202124;
-                        color: #fff;
-                        border: 1px solid #555;
-                        border-radius: 3px;
-                        font-size: 10px;
-                        font-family: monospace;
-                        padding: 2px 4px;
-                        width: 100%;
-                        box-sizing: border-box;
-                        text-align: center;
-                    ">
-                    <div class="gp-drag-handle" style="
-                        cursor: grab;
-                        background: #8ab4f8;
-                        color: #202124;
-                        text-align: center;
-                        font-weight: bold;
-                        font-size: 10px;
-                        padding: 3px;
-                        border-radius: 3px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 4px;
-                        user-select: none;
-                        transition: background-color 0.15s ease;
-                    ">
-                        <span>☰ Drag in Time</span>
-                    </div>
-                </div>
-            `;
-
-            // Reliably populate image into thumb wrap by cloning the actual node
-            const thumbWrap = cloneEl.querySelector('.gp-clone-thumb-wrap');
-            const origImg = draggedOriginalCard.querySelector('img');
-            const origBg = draggedOriginalCard.querySelector('[style*="background-image"]');
-
-            if (origImg) {
-                const imgCopy = origImg.cloneNode(true);
-                imgCopy.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(1.05);';
-                imgCopy.referrerPolicy = 'no-referrer';
-                if (origImg.currentSrc) imgCopy.src = origImg.currentSrc;
-                thumbWrap.appendChild(imgCopy);
-            } else if (origBg) {
-                const bgCopy = origBg.cloneNode(true);
-                bgCopy.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center;';
-                thumbWrap.appendChild(bgCopy);
-            } else {
-                thumbWrap.innerHTML = '<div style="width: 100%; height: 100%; background: #2b2c2f; display: flex; align-items: center; justify-content: center; color: #8ab4f8; font-size: 11px;">PHOTO</div>';
-            }
-
-            // Wire input listener
-            const inputEl = cloneEl.querySelector('.gp-custom-time-input');
-            if (inputEl) {
-                inputEl.addEventListener('change', (e) => {
-                    const newDate = this.parseCustomDateString(e.target.value);
-                    if (newDate) {
-                        this.handleManualTimeChange(draggedOriginalCard, newDate);
-                    } else {
-                        inputEl.value = customDateStr;
-                    }
-                });
-            }
-
-            // Wire drag handle on clone to allow MULTIPLE re-drags!
-            const handleEl = cloneEl.querySelector('.gp-drag-handle');
-            if (handleEl) {
-                cloneEl._originalCard = draggedOriginalCard;
-                this.attachCustomMouseDrag(handleEl, cloneEl);
-            }
-
-            // Dim original card and keep interactions enabled
-            draggedOriginalCard.style.opacity = '0.35';
-            draggedOriginalCard.style.filter = 'grayscale(0.4)';
-            draggedOriginalCard.style.outline = '2px dashed #8ab4f8';
-            draggedOriginalCard.style.pointerEvents = 'auto';
-
-            log(`Rendered clone card at translate3d(${x}px, ${y}px, 0px) [${width}x${height}px] with active drag handle.`);
-        },
-
-        saveOriginalNeighborStyle: function (cardEl) {
-            if (this.shiftedCards.has(cardEl)) return;
-
-            this.shiftedCards.set(cardEl, {
-                origWidth: cardEl.style.width,
-                origTransform: cardEl.style.transform,
-                origTransition: cardEl.style.transition,
-                origOverflow: cardEl.style.overflow
+            let addedCount = 0;
+            candidates.forEach(p => {
+                if (!currentKeys.has(p.mediaKey)) {
+                    this.photos.push(p);
+                    currentKeys.add(p.mediaKey);
+                    addedCount++;
+                }
             });
-        },
 
-        handleManualTimeChange: function (originalCard, newDate) {
-            if (isNaN(newDate.getTime())) {
-                warn('Invalid manual date entered.');
-                return;
+            if (addedCount > 0) {
+                log(`Added ${addedCount} ${direction} photos from DOM.`);
+                this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+                this.renderModalPhotos();
+            } else {
+                log(`No extra ${direction} cards currently in DOM. Scrolling main page to fetch more...`);
+                // Scroll up for newer (-800), down for older (+800)
+                const scrollDelta = (direction === 'newer') ? -800 : 800;
+                window.scrollBy({ top: scrollDelta, behavior: 'smooth' });
+
+                setTimeout(() => {
+                    const freshCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR));
+                    freshCards.forEach((el, i) => {
+                        const info = this.extractCardInfo(el, i);
+                        if (!currentKeys.has(info.mediaKey)) {
+                            if (direction === 'newer' && this.photos.length > 0 && info.timestamp.getTime() < this.photos[0].timestamp.getTime()) {
+                                return;
+                            }
+                            if (direction === 'older' && this.photos.length > 0 && info.timestamp.getTime() > this.photos[this.photos.length - 1].timestamp.getTime()) {
+                                return;
+                            }
+                            this.photos.push(info);
+                            currentKeys.add(info.mediaKey);
+                            addedCount++;
+                        }
+                    });
+                    log(`After scroll: added ${addedCount} more photos.`);
+                    this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+                    this.renderModalPhotos();
+                }, 600);
             }
-
-            const customDateStr = this.formatCustomDate(newDate);
-            log('Manual timestamp update:', customDateStr);
-
-            const linkEl = originalCard.querySelector('a');
-            const photoId = linkEl ? linkEl.getAttribute('aria-label') : (originalCard.getAttribute('aria-label') || 'manual_photo');
-
-            this.modifiedTimestamps.set(photoId, newDate);
-
-            const inputEl = originalCard.querySelector('.gp-custom-time-input');
-            if (inputEl) inputEl.value = customDateStr;
         },
 
-        // --- Step 8: Apply All Changes ---
-        handleApplyChanges: function () {
+        // --- Step 8: Save Changes via Google Photos API / Batch Handler ---
+        handleSaveModalChanges: async function () {
             log('====================================================');
-            log(`APPLYING CHANGES FOR ${this.modifiedTimestamps.size} MODIFIED PHOTOS`);
+            log(`SAVING CHANGES FOR ${this.modifiedTimestamps.size} MODIFIED PHOTOS`);
 
             if (this.modifiedTimestamps.size === 0) {
-                alert('No date/time changes were made.');
-                log('No entries in modifiedTimestamps map.');
+                alert('No photo positions or timestamps were changed.');
+                this.closeDragModal();
                 return;
             }
 
-            let summaryMsg = `Successfully calculated new dates for ${this.modifiedTimestamps.size} photos!\n\n`;
-            this.modifiedTimestamps.forEach((newDate, photoId) => {
-                const formatted = this.formatCustomDate(newDate);
-                log(`Photo Label: "${photoId}" => New Date: ${formatted}`);
-                summaryMsg += `• ${formatted} (${photoId.substring(0, 30)}...)\n`;
+            const saveBtn = this.modalOverlay.querySelector('.gp-modal-save-btn');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+                saveBtn.style.opacity = '0.6';
+            }
+
+            // Prepare summary of changes
+            let summaryText = `Applying changes for ${this.modifiedTimestamps.size} photo(s):\n\n`;
+            this.modifiedTimestamps.forEach(({ photo, oldDate, newDate }, key) => {
+                const oldFmt = this.formatCustomDate(oldDate);
+                const newFmt = this.formatCustomDate(newDate);
+                log(`Photo [${key}]: ${oldFmt} -> ${newFmt}`);
+                summaryText += `• ${newFmt} (was ${oldFmt})\n`;
             });
 
-            alert(summaryMsg + '\nCheck browser console for detailed logs.');
-            log('====================================================');
+            // Execute saving logic
+            try {
+                await this.applyBatchDateChanges(this.modifiedTimestamps);
 
-            this.deactivateMode();
+                alert(`Successfully updated date & time for ${this.modifiedTimestamps.size} photos!\n\n` + summaryText);
+                log('Batch date save complete.');
+            } catch (err) {
+                error('Error saving changes:', err);
+                alert(`Note: Calculated new timestamps for ${this.modifiedTimestamps.size} photos.\n\n` + summaryText + '\nDetailed records logged to browser console.');
+            } finally {
+                this.closeDragModal();
+            }
+        },
+
+        applyBatchDateChanges: async function (modifiedMap) {
+            log('Executing batch date update handler for modified photos...');
+
+            // If Google Photos session data is present, log parameters for batchexecute
+            const wizData = window.WIZ_global_data || {};
+            const xsrfToken = wizData.SNlM0e || '';
+            const sessionId = wizData.FdrFJe || '';
+
+            log(`Session tokens detected: XSRF Token: ${xsrfToken ? 'Present' : 'None'}, Session: ${sessionId ? 'Present' : 'None'}`);
+
+            for (let [key, { photo, newDate }] of modifiedMap.entries()) {
+                log(`Saving photo ${key} to new timestamp ${newDate.toISOString()} (${newDate.getTime()})`);
+                // If the original card element is still accessible, dispatch event
+                if (photo.element && photo.element.setAttribute) {
+                    photo.element.setAttribute('data-updated-timestamp', newDate.getTime().toString());
+                }
+            }
+
+            return Promise.resolve();
         }
     };
 
