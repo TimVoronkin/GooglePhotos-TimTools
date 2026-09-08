@@ -37,13 +37,18 @@ window.TimTools.Modules.DragInTimeTemplates.getPhotoCardHtml = function (photo, 
             </div>
         `}
 
-        <!-- Video Duration Badge (Compact pill in bottom-right corner) -->
-        ${photo.isVideo && photo.duration ? /* html */ `
-            <div class="gp-card-video-badge">
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                <span>${photo.duration}</span>
+        <!-- Bottom-Right Badges Container (Video duration placed above Filename tag) -->
+        <div class="gp-card-bottom-right">
+            ${photo.isVideo && photo.duration ? /* html */ `
+                <div class="gp-card-video-badge">
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    <span>${photo.duration}</span>
+                </div>
+            ` : ''}
+            <div class="gp-card-filename-badge" title="${photo.filename || ''}">
+                ${photo.filename || ''}
             </div>
-        ` : ''}
+        </div>
 
         <!-- Bottom-Left Time Display -->
         <div class="gp-card-time-display" ${isDraggable ? 'title="Click to edit date, time & timezone"' : 'title="Photo timestamp"'}>

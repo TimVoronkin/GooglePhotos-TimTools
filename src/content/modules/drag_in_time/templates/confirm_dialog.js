@@ -10,7 +10,7 @@ window.TimTools.Modules.DragInTimeTemplates.getConfirmModalHtml = function (coun
     return /* html */ `
         <div class="gp-confirm-dialog-box" role="dialog" aria-modal="true">
             <!-- Header -->
-            <div style="padding: 24px 28px 18px 28px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+            <div style="padding: 24px 28px 0px 28px;">
                 <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 8px;">
                     <div style="background: rgba(138, 180, 248, 0.15); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #8ab4f8; flex-shrink: 0;">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -18,7 +18,7 @@ window.TimTools.Modules.DragInTimeTemplates.getConfirmModalHtml = function (coun
                         </svg>
                     </div>
                     <div>
-                        <h2 style="margin: 0; font-size: 20px; font-weight: 500; color: #ffffff;">Are you sure you want to change dates for these media?</h2>
+                        <h2 style="margin: 0; font-size: 20px; font-weight: 500; color: #ffffff;">Are you sure?</h2>
                         <div style="font-size: 13px; color: #9aa0a6; margin-top: 4px;">
                             <b>${count}</b> media item(s) will be updated. Changes will be saved to Google Photos and the page will automatically reload.
                         </div>
@@ -44,7 +44,7 @@ window.TimTools.Modules.DragInTimeTemplates.getConfirmModalHtml = function (coun
             </div>
 
             <!-- Actions -->
-            <div style="padding: 16px 28px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1); background: #202124;">
+            <div style="padding: 16px 28px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; background: #202124;">
                 <button class="gp-confirm-cancel-btn" style="background: transparent; color: #8ab4f8; border: 1px solid #5f6368; border-radius: 20px; padding: 0 20px; height: 36px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color 0.15s;">Cancel</button>
                 <button class="gp-confirm-save-btn" style="background-color: #8ab4f8; color: #202124; border: none; border-radius: 20px; padding: 0 24px; height: 36px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: background-color 0.15s, box-shadow 0.15s;">Confirm</button>
             </div>

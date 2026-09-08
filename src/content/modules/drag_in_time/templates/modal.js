@@ -22,11 +22,21 @@ window.TimTools.Modules.DragInTimeTemplates.getModalOverlayHtml = function () {
                         <div class="gp-header-subtitle">Reorder photos chronologically or adjust timestamps visually</div>
                     </div>
                 </div>
-                <button class="gp-modal-close-btn" title="Close window">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                    </svg>
-                </button>
+                <div class="gp-header-actions">
+                    <label class="gp-header-checkbox-label" title="Display photos as squares or preserve their original aspect ratio">
+                        <input type="checkbox" class="gp-square-aspect-checkbox" checked />
+                        <span class="gp-checkbox-text">Square photos</span>
+                    </label>
+                    <label class="gp-header-checkbox-label" title="Show original filenames on photo cards">
+                        <input type="checkbox" class="gp-show-filenames-checkbox" />
+                        <span class="gp-checkbox-text">Show filenames</span>
+                    </label>
+                    <button class="gp-modal-close-btn" title="Close window">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Body Photostream -->

@@ -27,6 +27,9 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         photos: [], // Array of photo objects in modal
         selectedMediaKeys: new Set(), // Set of mediaKeys that were originally selected
         modifiedTimestamps: new Map(), // mediaKey/id -> { photo, oldDate, newDate }
+        showFilenames: false,
+        isSquareAspect: true,
+        filenameCache: new Map(), // mediaKey -> filename
         isDragging: false,
         draggedPhotoId: null,
         dragSourceIndex: -1,
@@ -364,6 +367,41 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             return isNaN(d.getTime()) ? null : d;
         },
 
+        extractFilename: function (ariaLabel, cardEl) {
+            if (!ariaLabel && !cardEl) return '';
+
+            // 1. Check aria-label for explicit filename with extension
+            const extMatch = ariaLabel ? ariaLabel.match(/\b([a-zA-Z0-9_\-\.\(\)]+\.(?:jpe?g|png|webp|heic|mp4|mov|avi|mkv|3gp|gif|dng|raw|tiff|bmp))\b/i) : null;
+            if (extMatch) return extMatch[1];
+
+            // 2. Check camera pattern names in aria-label (e.g. IMG_20240515_142205 or PXL_... or DSC...)
+            const camMatch = ariaLabel ? ariaLabel.match(/\b((?:IMG|PXL|VID|DSC|SAM|MVI|MOV|PIC|DCIM|Screenshot|Screen)[_\-\d][a-zA-Z0-9_\-\.\(\)]*)\b/i) : null;
+            if (camMatch) return camMatch[1];
+
+            // 3. Check img alt or title in card
+            if (cardEl) {
+                const img = cardEl.querySelector('img');
+                if (img) {
+                    const alt = img.getAttribute('alt') || '';
+                    const altMatch = alt.match(/\b([a-zA-Z0-9_\-\.\(\)]+\.(?:jpe?g|png|webp|heic|mp4|mov|avi|mkv|3gp|gif|dng|raw))\b/i);
+                    if (altMatch) return altMatch[1];
+
+                    const imgTitle = img.getAttribute('title') || '';
+                    const titleMatch = imgTitle.match(/\b([a-zA-Z0-9_\-\.\(\)]+\.(?:jpe?g|png|webp|heic|mp4|mov|avi|mkv|3gp|gif|dng|raw))\b/i);
+                    if (titleMatch) return titleMatch[1];
+                }
+
+                // 4. Check card or link title
+                const title = cardEl.getAttribute('title') || (cardEl.querySelector('a') ? cardEl.querySelector('a').getAttribute('title') : '');
+                if (title) {
+                    const tMatch = title.match(/\b([a-zA-Z0-9_\-\.\(\)]+\.(?:jpe?g|png|webp|heic|mp4|mov|avi|mkv|3gp|gif|dng|raw))\b/i);
+                    if (tMatch) return tMatch[1];
+                }
+            }
+
+            return '';
+        },
+
         extractCardInfo: function (cardEl, index) {
             const linkEl = cardEl.querySelector('a');
             const ariaLabel = linkEl ? linkEl.getAttribute('aria-label') : (cardEl.getAttribute('aria-label') || '');
@@ -388,6 +426,12 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 mediaKey = urlParts[urlParts.length - 1] || `photo_${index}`;
             } else {
                 mediaKey = `photo_${index}_${parsedDate.getTime()}`;
+            }
+
+            // Extract filename from cache or DOM
+            let filename = this.filenameCache.get(mediaKey) || this.extractFilename(ariaLabel, cardEl);
+            if (filename) {
+                this.filenameCache.set(mediaKey, filename);
             }
 
             // Thumbnail background or image
@@ -435,6 +479,33 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 if (cleanMatch) duration = cleanMatch[1];
             }
 
+            if (!filename && isVideo) {
+                const vMatch = ariaLabel.match(/\b([a-zA-Z0-9_\-\.]+\.(?:mp4|mov|avi|mkv|3gp))\b/i);
+                if (vMatch) {
+                    filename = vMatch[1];
+                    this.filenameCache.set(mediaKey, filename);
+                }
+            }
+
+            // Aspect ratio calculation
+            let aspectRatio = 1;
+            if (cardEl) {
+                const img = cardEl.querySelector('img');
+                if (img && img.naturalWidth && img.naturalHeight) {
+                    aspectRatio = img.naturalWidth / img.naturalHeight;
+                } else if (cardEl.offsetWidth && cardEl.offsetHeight) {
+                    aspectRatio = cardEl.offsetWidth / cardEl.offsetHeight;
+                } else {
+                    const rect = cardEl.getBoundingClientRect();
+                    if (rect.width > 0 && rect.height > 0) {
+                        aspectRatio = rect.width / rect.height;
+                    }
+                }
+            }
+            if (isVideo && (!aspectRatio || aspectRatio === 1)) {
+                aspectRatio = 16 / 9;
+            }
+
             const isSelected = cardEl.classList.contains('R1sU4e') ||
                                (this.selectedMediaKeys && this.selectedMediaKeys.has(mediaKey)) ||
                                (cardEl.querySelector('[role="checkbox"]') && cardEl.querySelector('[role="checkbox"]').getAttribute('aria-checked') === 'true') ||
@@ -443,6 +514,8 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             return {
                 id: mediaKey,
                 mediaKey: mediaKey,
+                filename: filename,
+                aspectRatio: aspectRatio || 1,
                 element: cardEl,
                 ariaLabel: ariaLabel,
                 timestamp: parsedDate,
@@ -578,6 +651,22 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const bottomLoadBtn = overlay.querySelector('.gp-load-older');
             if (bottomLoadBtn) bottomLoadBtn.onclick = () => this.loadMorePhotos('older');
 
+            const squareAspectToggle = overlay.querySelector('.gp-square-aspect-checkbox');
+            if (squareAspectToggle) {
+                squareAspectToggle.checked = this.isSquareAspect;
+                squareAspectToggle.addEventListener('change', (e) => {
+                    this.toggleSquareAspect(e.target.checked);
+                });
+            }
+
+            const filenameToggle = overlay.querySelector('.gp-show-filenames-checkbox');
+            if (filenameToggle) {
+                filenameToggle.checked = this.showFilenames;
+                filenameToggle.addEventListener('change', (e) => {
+                    this.toggleShowFilenames(e.target.checked);
+                });
+            }
+
             document.body.appendChild(overlay);
             this.modalOverlay = overlay;
 
@@ -662,6 +751,20 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
             container.innerHTML = '';
 
+            if (this.showFilenames) {
+                container.classList.add('gp-show-filenames');
+            } else {
+                container.classList.remove('gp-show-filenames');
+            }
+
+            if (this.isSquareAspect) {
+                container.classList.add('gp-square-mode');
+                container.classList.remove('gp-original-aspect');
+            } else {
+                container.classList.remove('gp-square-mode');
+                container.classList.add('gp-original-aspect');
+            }
+
             if (this.photos.length === 0) {
                 container.innerHTML = `
                     <div style="text-align: center; color: #9aa0a6; padding: 40px; font-size: 14px;">
@@ -711,6 +814,90 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             this.updateLoadButtonsVisibility();
         },
 
+        toggleSquareAspect: function (isSquare) {
+            this.isSquareAspect = !!isSquare;
+            const container = this.modalOverlay ? this.modalOverlay.querySelector('.gp-photos-stream-container') : null;
+            if (container) {
+                if (this.isSquareAspect) {
+                    container.classList.add('gp-square-mode');
+                    container.classList.remove('gp-original-aspect');
+                } else {
+                    container.classList.remove('gp-square-mode');
+                    container.classList.add('gp-original-aspect');
+                }
+            }
+        },
+
+        toggleShowFilenames: function (isEnabled) {
+            this.showFilenames = !!isEnabled;
+            const container = this.modalOverlay ? this.modalOverlay.querySelector('.gp-photos-stream-container') : null;
+            if (container) {
+                if (this.showFilenames) {
+                    container.classList.add('gp-show-filenames');
+                    this.fetchMissingFilenames();
+                } else {
+                    container.classList.remove('gp-show-filenames');
+                }
+            }
+        },
+
+        fetchMissingFilenames: async function () {
+            if (!this.showFilenames) return;
+            const wizData = this.getWizGlobalData();
+            if (!wizData || !wizData.at) return;
+
+            const missing = this.photos.filter(p => !p.filename && p.mediaKey && !p.mediaKey.startsWith('photo_'));
+            if (missing.length === 0) return;
+
+            log(`[Filenames] Fetching missing filenames for ${missing.length} photos in background...`);
+
+            for (let i = 0; i < missing.length; i += 6) {
+                if (!this.showFilenames || !this.modalOverlay) break;
+                const batch = missing.slice(i, i + 6);
+                await Promise.allSettled(batch.map(async (photo) => {
+                    try {
+                        let name = '';
+                        const info = await this.makeApiRequest('VrseUb', [photo.mediaKey, null, null, null, null], wizData);
+                        if (info && info[0]) {
+                            for (let field of info[0]) {
+                                if (typeof field === 'string' && /\.[a-zA-Z0-9]{3,4}$/.test(field.trim())) {
+                                    name = field.trim();
+                                    break;
+                                }
+                            }
+                            if (!name && typeof info[0][2] === 'string' && info[0][2]) {
+                                name = info[0][2];
+                            }
+                        }
+
+                        if (!name) {
+                            const details = await this.makeApiRequest('fDcn4b', [photo.mediaKey, 1], wizData);
+                            if (details) {
+                                const str = JSON.stringify(details);
+                                const match = str.match(/"([^"]+\.(?:jpe?g|png|webp|heic|mp4|mov|avi|mkv|3gp|gif|dng|raw))"/i);
+                                if (match) name = match[1];
+                            }
+                        }
+
+                        if (name) {
+                            photo.filename = name;
+                            this.filenameCache.set(photo.mediaKey, name);
+                            if (this.modalOverlay) {
+                                const card = this.modalOverlay.querySelector(`.gp-modal-photo-card[data-photo-id="${photo.mediaKey}"]`);
+                                if (card) {
+                                    const badge = card.querySelector('.gp-card-filename-badge');
+                                    if (badge) {
+                                        badge.textContent = name;
+                                        badge.title = name;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }));
+            }
+        },
+
         createModalPhotoCard: function (photo) {
             const templates = window.TimTools.Modules.DragInTimeTemplates;
             const card = document.createElement('div');
@@ -727,6 +914,27 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             };
 
             card.innerHTML = templates.getPhotoCardHtml(photo, options);
+
+            // Aspect ratio setup for original aspect mode
+            if (photo.aspectRatio) {
+                card.style.aspectRatio = `${photo.aspectRatio}`;
+            }
+
+            const cardImg = card.querySelector('.gp-card-img');
+            if (cardImg) {
+                const onImageReady = () => {
+                    if (cardImg.naturalWidth && cardImg.naturalHeight) {
+                        const ratio = cardImg.naturalWidth / cardImg.naturalHeight;
+                        photo.aspectRatio = ratio;
+                        card.style.aspectRatio = `${ratio}`;
+                    }
+                };
+                if (cardImg.complete && cardImg.naturalWidth) {
+                    onImageReady();
+                } else {
+                    cardImg.addEventListener('load', onImageReady);
+                }
+            }
 
             // 1. Setup Bottom Timeline Slider (State 2)
             this.setupCardSlider(card, photo);
@@ -1543,66 +1751,43 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
             let at = '', fsid = '', bl = '', path = '/_/PhotosUi/', account = '';
 
-            // Method 1: Execute inline script in page context to grab window.WIZ_global_data
+            // 1. Direct window check (if accessible in current JS realm)
             try {
-                const nonceEl = document.querySelector('script[nonce]');
-                const nonce = nonceEl ? nonceEl.getAttribute('nonce') : '';
-                const script = document.createElement('script');
-                if (nonce) script.setAttribute('nonce', nonce);
-                script.textContent = `
-                    (function() {
-                        try {
-                            const w = window.WIZ_global_data || {};
-                            const data = {
-                                at: w.SNlM0e || '',
-                                fsid: w.FdrFJe || '',
-                                bl: w.cfb2h || '',
-                                path: w.eptZe || '/_/PhotosUi/',
-                                account: w.oPEP7c || ''
-                            };
-                            document.documentElement.setAttribute('data-gp-wiz', JSON.stringify(data));
-                        } catch (e) {}
-                    })();
-                `;
-                (document.head || document.documentElement).appendChild(script);
-                script.remove();
-
-                const attr = document.documentElement.getAttribute('data-gp-wiz');
-                if (attr) {
-                    document.documentElement.removeAttribute('data-gp-wiz');
-                    const parsed = JSON.parse(attr);
-                    if (parsed && parsed.at) {
-                        this._cachedWizData = parsed;
-                        return parsed;
-                    }
+                if (typeof window.WIZ_global_data === 'object' && window.WIZ_global_data) {
+                    const w = window.WIZ_global_data;
+                    at = w.SNlM0e || '';
+                    fsid = w.FdrFJe || '';
+                    bl = w.cfb2h || '';
+                    path = w.eptZe || '/_/PhotosUi/';
+                    account = w.oPEP7c || '';
                 }
-            } catch (e) {
-                warn('DOM script bridge for WIZ_global_data threw:', e);
-            }
+            } catch (e) {}
 
-            // Method 2: Scan DOM script tags for WIZ_global_data JSON
-            try {
-                const scripts = document.querySelectorAll('script');
-                for (const s of scripts) {
-                    const content = s.textContent || '';
-                    if (content.includes('WIZ_global_data') || content.includes('SNlM0e')) {
-                        const atMatch = content.match(/"SNlM0e"\s*:\s*"([^"]+)"/);
-                        const fsidMatch = content.match(/"FdrFJe"\s*:\s*"([^"]+)"/);
-                        const blMatch = content.match(/"cfb2h"\s*:\s*"([^"]+)"/);
-                        const pathMatch = content.match(/"eptZe"\s*:\s*"([^"]+)"/);
-                        const accMatch = content.match(/"oPEP7c"\s*:\s*"([^"]+)"/);
+            // 2. Scan static DOM script tags for WIZ_global_data JSON (100% CSP safe, no inline script execution)
+            if (!at) {
+                try {
+                    const scripts = document.querySelectorAll('script');
+                    for (const s of scripts) {
+                        const content = s.textContent || '';
+                        if (content.includes('WIZ_global_data') || content.includes('SNlM0e')) {
+                            const atMatch = content.match(/"SNlM0e"\s*:\s*"([^"]+)"/);
+                            const fsidMatch = content.match(/"FdrFJe"\s*:\s*"([^"]+)"/);
+                            const blMatch = content.match(/"cfb2h"\s*:\s*"([^"]+)"/);
+                            const pathMatch = content.match(/"eptZe"\s*:\s*"([^"]+)"/);
+                            const accMatch = content.match(/"oPEP7c"\s*:\s*"([^"]+)"/);
 
-                        if (atMatch) at = atMatch[1];
-                        if (fsidMatch) fsid = fsidMatch[1];
-                        if (blMatch) bl = blMatch[1];
-                        if (pathMatch) path = pathMatch[1];
-                        if (accMatch) account = accMatch[1];
+                            if (atMatch) at = atMatch[1];
+                            if (fsidMatch) fsid = fsidMatch[1];
+                            if (blMatch) bl = blMatch[1];
+                            if (pathMatch) path = pathMatch[1];
+                            if (accMatch) account = accMatch[1];
 
-                        if (at) break;
+                            if (at) break;
+                        }
                     }
+                } catch (e) {
+                    warn('Script tag regex search for WIZ_global_data threw:', e);
                 }
-            } catch (e) {
-                warn('Script tag regex search for WIZ_global_data threw:', e);
             }
 
             const res = { at, fsid, bl, path, account };
