@@ -1182,65 +1182,536 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         },
 
         // --- Step 8: Save Changes via Google Photos API / Batch Handler ---
-        handleSaveModalChanges: async function () {
+        handleSaveModalChanges: function () {
             log('====================================================');
             log(`SAVING CHANGES FOR ${this.modifiedTimestamps.size} MODIFIED PHOTOS`);
 
             if (this.modifiedTimestamps.size === 0) {
-                alert('No photo positions or timestamps were changed.');
-                this.closeDragModal();
+                alert('Немає змінених дат для збереження. Перетягніть фотографії, щоб змінити їхній час.');
                 return;
             }
 
-            const saveBtn = this.modalOverlay.querySelector('.gp-modal-save-btn');
-            if (saveBtn) {
-                saveBtn.disabled = true;
-                saveBtn.textContent = 'Saving...';
-                saveBtn.style.opacity = '0.6';
-            }
+            this.showConfirmationModal();
+        },
 
-            // Prepare summary of changes
-            let summaryText = `Applying changes for ${this.modifiedTimestamps.size} photo(s):\n\n`;
+        formatDateDiff: function (oldDate, newDate) {
+            const pad = (n) => String(n).padStart(2, '0');
+
+            const oY = oldDate.getFullYear();
+            const oM = oldDate.getMonth() + 1;
+            const oD = oldDate.getDate();
+            const oH = oldDate.getHours();
+            const oMin = oldDate.getMinutes();
+            const oS = oldDate.getSeconds();
+
+            const nY = newDate.getFullYear();
+            const nM = newDate.getMonth() + 1;
+            const nD = newDate.getDate();
+            const nH = newDate.getHours();
+            const nMin = newDate.getMinutes();
+            const nS = newDate.getSeconds();
+
+            const diffY = oY !== nY;
+            const diffM = oM !== nM;
+            const diffD = oD !== nD;
+            const diffH = oH !== nH;
+            const diffMin = oMin !== nMin;
+            const diffS = oS !== nS;
+
+            const wrapOld = (val, isDiff) => isDiff
+                ? `<strong style="font-weight: 800; color: #f28b82;">${val}</strong>`
+                : `<span style="color: #9aa0a6; font-weight: 400;">${val}</span>`;
+
+            const wrapNew = (val, isDiff) => isDiff
+                ? `<strong style="font-weight: 800; color: #8ab4f8;">${val}</strong>`
+                : `<span style="color: #9aa0a6; font-weight: 400;">${val}</span>`;
+
+            const oldStr = `${wrapOld(oY, diffY)}.${wrapOld(pad(oM), diffM)}.${wrapOld(pad(oD), diffD)} ${wrapOld(pad(oH), diffH)}:${wrapOld(pad(oMin), diffMin)}:${wrapOld(pad(oS), diffS)}`;
+            const newStr = `${wrapNew(nY, diffY)}.${wrapNew(pad(nM), diffM)}.${wrapNew(pad(nD), diffD)} ${wrapNew(pad(nH), diffH)}:${wrapNew(pad(nMin), diffMin)}:${wrapNew(pad(nS), diffS)}`;
+
+            return {
+                oldHtml: oldStr,
+                newHtml: newStr
+            };
+        },
+
+        showConfirmationModal: function () {
+            // Remove any existing confirm dialog
+            const existing = document.querySelector('.gp-confirm-dialog-overlay');
+            if (existing) existing.remove();
+
+            const confirmOverlay = document.createElement('div');
+            confirmOverlay.className = 'gp-confirm-dialog-overlay';
+            confirmOverlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.75);
+                z-index: 1000002;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                backdrop-filter: blur(5px);
+                font-family: 'Google Sans', Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
+                animation: gpFadeIn 0.2s ease-out;
+            `;
+
+            const dialog = document.createElement('div');
+            dialog.className = 'gp-confirm-dialog-box';
+            dialog.style.cssText = `
+                background: #202124;
+                color: #e8eaed;
+                width: 660px;
+                max-width: 95vw;
+                max-height: 85vh;
+                border-radius: 24px;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 16px 48px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
+                overflow: hidden;
+            `;
+
+            // 1. Header
+            const header = document.createElement('div');
+            header.style.cssText = `
+                padding: 24px 24px 16px 24px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            `;
+            header.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                    <div style="background: rgba(138, 180, 248, 0.15); width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #8ab4f8; flex-shrink: 0;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 style="margin: 0; font-size: 18px; font-weight: 500; color: #ffffff;">Чи ви впевнені, що хочете змінити дати цих медіа?</h2>
+                        <div style="font-size: 13px; color: #9aa0a6; margin-top: 4px;">
+                            Буде оновлено <b>${this.modifiedTimestamps.size}</b> елемент(ів). Після підтвердження зміни буде надіслано в Google Photos, а сторінка автоматично перезавантажиться.
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 2. Content
+            const content = document.createElement('div');
+            content.style.cssText = `
+                padding: 16px 24px;
+                overflow-y: auto;
+                max-height: 52vh;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            `;
+
+            const tableContainer = document.createElement('div');
+            tableContainer.style.cssText = `
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                background: #17181b;
+                overflow: hidden;
+            `;
+
+            const table = document.createElement('table');
+            table.style.cssText = `
+                width: 100%;
+                border-collapse: collapse;
+                text-align: left;
+            `;
+
+            table.innerHTML = `
+                <thead>
+                    <tr style="background: rgba(255, 255, 255, 0.04); border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                        <th style="padding: 10px 14px; font-size: 11px; font-weight: 600; color: #9aa0a6; text-transform: uppercase; letter-spacing: 0.5px; width: 68px;">Прев'ю</th>
+                        <th style="padding: 10px 14px; font-size: 11px; font-weight: 600; color: #9aa0a6; text-transform: uppercase; letter-spacing: 0.5px;">Стара дата та час ➔ Нові дата та час</th>
+                    </tr>
+                </thead>
+                <tbody class="gp-confirm-table-body"></tbody>
+            `;
+
+            const tbody = table.querySelector('.gp-confirm-table-body');
+
             this.modifiedTimestamps.forEach(({ photo, oldDate, newDate }, key) => {
-                const oldFmt = this.formatCustomDate(oldDate);
-                const newFmt = this.formatCustomDate(newDate);
-                log(`Photo [${key}]: ${oldFmt} -> ${newFmt}`);
-                summaryText += `• ${newFmt} (was ${oldFmt})\n`;
+                const diff = this.formatDateDiff(oldDate, newDate);
+
+                const row = document.createElement('tr');
+                row.style.cssText = `
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                    transition: background-color 0.15s;
+                `;
+                row.onmouseenter = () => { row.style.backgroundColor = 'rgba(255, 255, 255, 0.03)'; };
+                row.onmouseleave = () => { row.style.backgroundColor = 'transparent'; };
+
+                // Thumbnail cell
+                const tdThumb = document.createElement('td');
+                tdThumb.style.cssText = `padding: 10px 14px; vertical-align: middle;`;
+
+                const thumbBox = document.createElement('div');
+                thumbBox.style.cssText = `
+                    width: 54px;
+                    height: 54px;
+                    border-radius: 8px;
+                    background: #2d2e31;
+                    overflow: hidden;
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+                `;
+
+                if (photo.bgUrl) {
+                    thumbBox.innerHTML = `
+                        <img src="${photo.bgUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="preview" />
+                    `;
+                } else {
+                    thumbBox.innerHTML = `
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="#9aa0a6">
+                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                        </svg>
+                    `;
+                }
+
+                if (photo.isVideo) {
+                    const videoTag = document.createElement('div');
+                    videoTag.style.cssText = `
+                        position: absolute;
+                        bottom: 2px;
+                        left: 2px;
+                        background: rgba(0,0,0,0.7);
+                        color: #ffffff;
+                        font-size: 9px;
+                        padding: 1px 4px;
+                        border-radius: 3px;
+                        display: flex;
+                        align-items: center;
+                        gap: 2px;
+                    `;
+                    videoTag.innerHTML = `
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        <span>${photo.duration || 'VIDEO'}</span>
+                    `;
+                    thumbBox.appendChild(videoTag);
+                }
+
+                tdThumb.appendChild(thumbBox);
+
+                // Date comparison cell
+                const tdDates = document.createElement('td');
+                tdDates.style.cssText = `padding: 10px 14px; vertical-align: middle;`;
+
+                tdDates.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px 10px; font-family: 'Roboto Mono', monospace, sans-serif; font-size: 13px; display: inline-flex; align-items: center;">
+                            ${diff.oldHtml}
+                        </div>
+                        <span style="color: #8ab4f8; font-size: 14px; font-weight: bold; flex-shrink: 0;">➔</span>
+                        <div style="background: rgba(138, 180, 248, 0.08); border: 1px solid rgba(138, 180, 248, 0.25); border-radius: 6px; padding: 6px 10px; font-family: 'Roboto Mono', monospace, sans-serif; font-size: 13px; display: inline-flex; align-items: center;">
+                            ${diff.newHtml}
+                        </div>
+                    </div>
+                `;
+
+                row.appendChild(tdThumb);
+                row.appendChild(tdDates);
+                tbody.appendChild(row);
             });
 
-            // Execute saving logic
-            try {
-                await this.applyBatchDateChanges(this.modifiedTimestamps);
+            tableContainer.appendChild(table);
+            content.appendChild(tableContainer);
 
-                alert(`Successfully updated date & time for ${this.modifiedTimestamps.size} photos!\n\n` + summaryText);
-                log('Batch date save complete.');
-            } catch (err) {
-                error('Error saving changes:', err);
-                alert(`Note: Calculated new timestamps for ${this.modifiedTimestamps.size} photos.\n\n` + summaryText + '\nDetailed records logged to browser console.');
-            } finally {
-                this.closeDragModal();
+            // Error banner placeholder
+            const errorBanner = document.createElement('div');
+            errorBanner.className = 'gp-confirm-error-banner';
+            errorBanner.style.cssText = `
+                display: none;
+                margin-top: 10px;
+                padding: 10px 14px;
+                background: rgba(234, 67, 53, 0.15);
+                border: 1px solid rgba(234, 67, 53, 0.4);
+                border-radius: 8px;
+                color: #f28b82;
+                font-size: 13px;
+                line-height: 1.4;
+            `;
+            content.appendChild(errorBanner);
+
+            // 3. Footer
+            const footer = document.createElement('div');
+            footer.style.cssText = `
+                padding: 16px 24px;
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 12px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                background: #202124;
+            `;
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.style.cssText = `
+                background: transparent;
+                color: #8ab4f8;
+                border: 1px solid #5f6368;
+                border-radius: 20px;
+                padding: 0 20px;
+                height: 36px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background-color 0.15s;
+            `;
+            cancelBtn.textContent = 'Скасувати';
+            cancelBtn.onmouseenter = () => { cancelBtn.style.backgroundColor = 'rgba(138, 180, 248, 0.08)'; };
+            cancelBtn.onmouseleave = () => { cancelBtn.style.backgroundColor = 'transparent'; };
+            cancelBtn.onclick = () => {
+                confirmOverlay.remove();
+            };
+
+            const confirmBtn = document.createElement('button');
+            confirmBtn.style.cssText = `
+                background-color: #8ab4f8;
+                color: #202124;
+                border: none;
+                border-radius: 20px;
+                padding: 0 24px;
+                height: 36px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                transition: background-color 0.15s, box-shadow 0.15s;
+            `;
+            confirmBtn.textContent = 'Підтвердити';
+            confirmBtn.onmouseenter = () => { confirmBtn.style.backgroundColor = '#aecbfa'; };
+            confirmBtn.onmouseleave = () => { confirmBtn.style.backgroundColor = '#8ab4f8'; };
+
+            confirmBtn.onclick = async () => {
+                confirmBtn.disabled = true;
+                cancelBtn.disabled = true;
+                confirmBtn.style.opacity = '0.7';
+                cancelBtn.style.opacity = '0.5';
+                confirmBtn.style.cursor = 'not-allowed';
+                confirmBtn.textContent = 'Збереження в Google Photos...';
+                errorBanner.style.display = 'none';
+
+                try {
+                    await this.applyBatchDateChanges(this.modifiedTimestamps);
+
+                    confirmBtn.style.backgroundColor = '#81c995';
+                    confirmBtn.textContent = '✓ Збережено! Оновлюємо сторінку...';
+                    log('Date update successfully applied. Reloading page in 800ms...');
+
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 800);
+                } catch (err) {
+                    error('Failed to apply date changes:', err);
+                    confirmBtn.disabled = false;
+                    cancelBtn.disabled = false;
+                    confirmBtn.style.opacity = '1';
+                    cancelBtn.style.opacity = '1';
+                    confirmBtn.style.cursor = 'pointer';
+                    confirmBtn.textContent = 'Спробувати знову';
+
+                    errorBanner.textContent = `Помилка збереження: ${err.message || err}`;
+                    errorBanner.style.display = 'block';
+                }
+            };
+
+            footer.appendChild(cancelBtn);
+            footer.appendChild(confirmBtn);
+
+            dialog.appendChild(header);
+            dialog.appendChild(content);
+            dialog.appendChild(footer);
+            confirmOverlay.appendChild(dialog);
+
+            // Backdrop click closes dialog if not busy
+            confirmOverlay.addEventListener('click', (e) => {
+                if (e.target === confirmOverlay && !confirmBtn.disabled) {
+                    confirmOverlay.remove();
+                }
+            });
+
+            document.body.appendChild(confirmOverlay);
+        },
+
+        getWizGlobalData: function () {
+            if (this._cachedWizData && this._cachedWizData.at) {
+                return this._cachedWizData;
             }
+
+            let at = '', fsid = '', bl = '', path = '/_/PhotosUi/', account = '';
+
+            // Method 1: Execute inline script in page context to grab window.WIZ_global_data
+            try {
+                const nonceEl = document.querySelector('script[nonce]');
+                const nonce = nonceEl ? nonceEl.getAttribute('nonce') : '';
+                const script = document.createElement('script');
+                if (nonce) script.setAttribute('nonce', nonce);
+                script.textContent = `
+                    (function() {
+                        try {
+                            const w = window.WIZ_global_data || {};
+                            const data = {
+                                at: w.SNlM0e || '',
+                                fsid: w.FdrFJe || '',
+                                bl: w.cfb2h || '',
+                                path: w.eptZe || '/_/PhotosUi/',
+                                account: w.oPEP7c || ''
+                            };
+                            document.documentElement.setAttribute('data-gp-wiz', JSON.stringify(data));
+                        } catch (e) {}
+                    })();
+                `;
+                (document.head || document.documentElement).appendChild(script);
+                script.remove();
+
+                const attr = document.documentElement.getAttribute('data-gp-wiz');
+                if (attr) {
+                    document.documentElement.removeAttribute('data-gp-wiz');
+                    const parsed = JSON.parse(attr);
+                    if (parsed && parsed.at) {
+                        this._cachedWizData = parsed;
+                        return parsed;
+                    }
+                }
+            } catch (e) {
+                warn('DOM script bridge for WIZ_global_data threw:', e);
+            }
+
+            // Method 2: Scan DOM script tags for WIZ_global_data JSON
+            try {
+                const scripts = document.querySelectorAll('script');
+                for (const s of scripts) {
+                    const content = s.textContent || '';
+                    if (content.includes('WIZ_global_data') || content.includes('SNlM0e')) {
+                        const atMatch = content.match(/"SNlM0e"\s*:\s*"([^"]+)"/);
+                        const fsidMatch = content.match(/"FdrFJe"\s*:\s*"([^"]+)"/);
+                        const blMatch = content.match(/"cfb2h"\s*:\s*"([^"]+)"/);
+                        const pathMatch = content.match(/"eptZe"\s*:\s*"([^"]+)"/);
+                        const accMatch = content.match(/"oPEP7c"\s*:\s*"([^"]+)"/);
+
+                        if (atMatch) at = atMatch[1];
+                        if (fsidMatch) fsid = fsidMatch[1];
+                        if (blMatch) bl = blMatch[1];
+                        if (pathMatch) path = pathMatch[1];
+                        if (accMatch) account = accMatch[1];
+
+                        if (at) break;
+                    }
+                }
+            } catch (e) {
+                warn('Script tag regex search for WIZ_global_data threw:', e);
+            }
+
+            const res = { at, fsid, bl, path, account };
+            if (at) {
+                this._cachedWizData = res;
+            }
+            return res;
+        },
+
+        makeApiRequest: async function (rpcid, requestData, wizData) {
+            const wrappedData = [[[rpcid, JSON.stringify(requestData), null, 'generic']]];
+            const requestDataString = `f.req=${encodeURIComponent(JSON.stringify(wrappedData))}&at=${encodeURIComponent(wizData.at)}&`;
+            const params = {
+                rpcids: rpcid,
+                'source-path': window.location.pathname,
+                'f.sid': wizData.fsid || '',
+                bl: wizData.bl || '',
+                pageId: 'none',
+                rt: 'c',
+            };
+            const paramsString = Object.keys(params)
+                .map((key) => `${key}=${encodeURIComponent(params[key])}`)
+                .join('&');
+            const basePath = wizData.path || '/_/PhotosUi/';
+            const url = `https://photos.google.com${basePath}data/batchexecute?${paramsString}`;
+
+            log(`Making batchexecute RPC request [${rpcid}] to ${url}...`);
+
+            const response = await fetch(url, {
+                headers: {
+                    'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                },
+                body: requestDataString,
+                method: 'POST',
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status} ${response.statusText}`);
+            }
+
+            const responseBody = await response.text();
+            if (!responseBody) {
+                throw new Error('Empty response body from Google Photos server');
+            }
+
+            const jsonLines = responseBody.split('\n').filter((line) => line.includes('wrb.fr'));
+            if (jsonLines.length === 0) {
+                return null;
+            }
+
+            try {
+                const parsedData = JSON.parse(jsonLines[0]);
+                if (parsedData?.[0]?.[2]) {
+                    return JSON.parse(parsedData[0][2]);
+                }
+            } catch (e) {
+                warn(`Could not parse JSON payload from response line for [${rpcid}]:`, e);
+            }
+            return null;
         },
 
         applyBatchDateChanges: async function (modifiedMap) {
             log('Executing batch date update handler for modified photos...');
+            const wizData = this.getWizGlobalData();
 
-            // If Google Photos session data is present, log parameters for batchexecute
-            const wizData = window.WIZ_global_data || {};
-            const xsrfToken = wizData.SNlM0e || '';
-            const sessionId = wizData.FdrFJe || '';
-
-            log(`Session tokens detected: XSRF Token: ${xsrfToken ? 'Present' : 'None'}, Session: ${sessionId ? 'Present' : 'None'}`);
-
-            for (let [key, { photo, newDate }] of modifiedMap.entries()) {
-                log(`Saving photo ${key} to new timestamp ${newDate.toISOString()} (${newDate.getTime()})`);
-                // If the original card element is still accessible, dispatch event
-                if (photo.element && photo.element.setAttribute) {
-                    photo.element.setAttribute('data-updated-timestamp', newDate.getTime().toString());
-                }
+            if (!wizData || !wizData.at) {
+                throw new Error('Google Photos session token (XSRF / SNlM0e) not found. Please ensure you are logged into Google Photos.');
             }
 
-            return Promise.resolve();
+            log(`Session tokens detected: XSRF Token: Present, Session: ${wizData.fsid ? 'Present' : 'None'}`);
+
+            // Prepare items for DaSgWe RPC
+            // Format: [ [dedupKey, timestampSec, timezoneSec], ... ]
+            const updateItems = [];
+
+            for (let [key, { photo, newDate }] of modifiedMap.entries()) {
+                log(`Preparing photo ${key} for date update to ${newDate.toISOString()} (${newDate.getTime()})`);
+
+                let dedupKey = key;
+                let tzSec = -Math.floor(new Date().getTimezoneOffset() * 60);
+
+                // Try to resolve dedupKey and original timezoneOffset from Google Photos via VrseUb
+                try {
+                    const itemInfo = await this.makeApiRequest('VrseUb', [key, null, null, null, null], wizData);
+                    if (itemInfo && itemInfo[0]) {
+                        if (itemInfo[0][3]) {
+                            dedupKey = itemInfo[0][3];
+                            log(`Resolved dedupKey for ${key} -> ${dedupKey}`);
+                        }
+                        if (typeof itemInfo[0][4] === 'number') {
+                            tzSec = Math.floor(itemInfo[0][4] / 1000);
+                            log(`Resolved timezoneSec for ${key} -> ${tzSec}`);
+                        }
+                    }
+                } catch (err) {
+                    warn(`VrseUb info lookup for ${key} failed, falling back to mediaKey:`, err);
+                }
+
+                const timestampSec = Math.floor(newDate.getTime() / 1000);
+                updateItems.push([dedupKey, timestampSec, tzSec]);
+            }
+
+            log(`Sending DaSgWe RPC with ${updateItems.length} items:`, updateItems);
+            const requestData = [updateItems];
+            await this.makeApiRequest('DaSgWe', requestData, wizData);
+
+            log('DaSgWe RPC call completed successfully!');
+            return true;
         }
     };
 
