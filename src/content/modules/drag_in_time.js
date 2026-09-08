@@ -185,11 +185,92 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         parseDateFromAriaLabel: function (text) {
             if (!text) return null;
             try {
-                // Strip prefix like "Photo - Landscape - " or "Світлина - Портрет - "
-                const cleanText = text.replace(/^(Photo|Світлина|Video|Відео)\s*[\–\-]\s*(Landscape|Portrait|Square|[\w\s]+)?[\–\-]?\s*/i, '').trim();
-                const d = new Date(cleanText);
-                if (!isNaN(d.getTime())) {
+                // 1. Strip media type and orientation prefix
+                let clean = text.replace(/^[^\w\dа-яА-ЯіІїЇєЄ]*(?:Photo|Світлина|Фотография|Фото|Video|Відео|Видео)\s*[-–—−]\s*(?:Landscape|Portrait|Square|Портрет|Пейзаж|Панорама|Альбом)?\s*[-–—−]?\s*/iu, '').trim();
+                clean = clean.replace(/^[^\w\dа-яА-ЯіІїЇєЄ]*(?:Photo|Світлина|Фотография|Фото|Video|Відео|Видео)\s+/iu, '').trim();
+
+                // Strip leading day-of-week if present (e.g. "середа, ", "Wed, ")
+                clean = clean.replace(/^(?:пн|вт|ср|чт|пт|сб|нд|понеділок|вівторок|середа|четвер|п['ʼ`]ятниця|субота|неділя|mon|tue|wed|thu|fri|sat|sun)[\.,\s–—\-]+/iu, '').trim();
+
+                let hours = 12, minutes = 0, seconds = 0;
+                const timeMatch = clean.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|дп|пп)?/iu);
+                if (timeMatch) {
+                    hours = parseInt(timeMatch[1], 10);
+                    minutes = parseInt(timeMatch[2], 10);
+                    seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+                    const meridiem = (timeMatch[4] || '').toUpperCase();
+                    if ((meridiem === 'PM' || meridiem === 'ПП') && hours < 12) hours += 12;
+                    if ((meridiem === 'AM' || meridiem === 'ДП') && hours === 12) hours = 0;
+                }
+
+                // Check for Today / Yesterday
+                const isToday = /^(?:today|сьогодні|сегодня)/iu.test(clean);
+                const isYesterday = /^(?:yesterday|вчора|вчера)/iu.test(clean);
+                if (isToday || isYesterday) {
+                    let d = new Date();
+                    if (isYesterday) d.setDate(d.getDate() - 1);
+                    d.setHours(hours, minutes, seconds, 0);
                     return d;
+                }
+
+                // Month dictionary mapping all prefixes to month 0..11
+                const monthMap = {
+                    // UA
+                    'січ': 0, 'лют': 1, 'бер': 2, 'кві': 3, 'тра': 4, 'чер': 5,
+                    'лип': 6, 'сер': 7, 'вер': 8, 'жов': 9, 'лис': 10, 'гру': 11,
+                    // RU
+                    'янв': 0, 'фев': 1, 'мар': 2, 'апр': 3, 'май': 4, 'мая': 4, 'июн': 5,
+                    'июл': 6, 'авг': 7, 'сен': 8, 'окт': 9, 'ноя': 10, 'дек': 11,
+                    // EN
+                    'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+                    'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+                };
+
+                const findMonth = (str) => {
+                    if (!str) return -1;
+                    const s = str.trim().toLowerCase();
+                    for (const [key, val] of Object.entries(monthMap)) {
+                        if (s.startsWith(key)) return val;
+                    }
+                    return -1;
+                };
+
+                // Pattern A: Day Month Year (e.g. "12 трав. 2024 р." or "12 мая 2024 г." or "12 May 2024")
+                const dayMonthYearMatch = clean.match(/(\d{1,2})\s+([а-яА-ЯіІїЇєЄa-zA-Z]+)\.?\s+(\d{4})/iu);
+                if (dayMonthYearMatch) {
+                    const day = parseInt(dayMonthYearMatch[1], 10);
+                    const month = findMonth(dayMonthYearMatch[2]);
+                    const year = parseInt(dayMonthYearMatch[3], 10);
+                    if (month !== -1) {
+                        return new Date(year, month, day, hours, minutes, seconds);
+                    }
+                }
+
+                // Pattern B: Month Day, Year (e.g. "May 12, 2024" or "травня 12, 2024")
+                const monthDayYearMatch = clean.match(/([а-яА-ЯіІїЇєЄa-zA-Z]+)\.?\s+(\d{1,2}),?\s+(\d{4})/iu);
+                if (monthDayYearMatch) {
+                    const month = findMonth(monthDayYearMatch[1]);
+                    const day = parseInt(monthDayYearMatch[2], 10);
+                    const year = parseInt(monthDayYearMatch[3], 10);
+                    if (month !== -1) {
+                        return new Date(year, month, day, hours, minutes, seconds);
+                    }
+                }
+
+                // Pattern C: Numeric format YYYY.MM.DD or YYYY-MM-DD
+                const numericMatch = clean.match(/(\d{4})[\.\/\-](\d{1,2})[\.\/\-](\d{1,2})/);
+                if (numericMatch) {
+                    const year = parseInt(numericMatch[1], 10);
+                    const month = parseInt(numericMatch[2], 10) - 1;
+                    const day = parseInt(numericMatch[3], 10);
+                    return new Date(year, month, day, hours, minutes, seconds);
+                }
+
+                // Pattern D: Standard English JS Date
+                const cleanedDateStr = clean.replace(/[рг]\./iu, '').trim();
+                const nativeDate = new Date(cleanedDateStr);
+                if (!isNaN(nativeDate.getTime())) {
+                    return nativeDate;
                 }
             } catch (err) {}
             return null;
@@ -199,7 +280,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             if (!date || isNaN(date.getTime())) return 'Unknown Date';
             const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
             try {
-                return date.toLocaleDateString(undefined, options);
+                return date.toLocaleDateString('en-US', options);
             } catch (e) {
                 return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
             }
@@ -239,10 +320,62 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             return isNaN(d.getTime()) ? null : d;
         },
 
+        formatTimezoneString: function (date) {
+            if (!date || isNaN(date.getTime())) return 'GMT';
+            const offsetMin = -date.getTimezoneOffset();
+            const offsetHours = offsetMin / 60;
+            const sign = offsetHours >= 0 ? '+' : '';
+            return `GMT${sign}${offsetHours % 1 === 0 ? offsetHours : offsetHours.toFixed(1)}`;
+        },
+
+        formatDateDisplay: function (date) {
+            if (!date || isNaN(date.getTime())) return '';
+            return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+        },
+
+        parseManualInputs: function (dateStr, timeStr, tzStr) {
+            if (!dateStr || !timeStr) return null;
+            let year, month, day;
+            const dotMatch = dateStr.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+            const isoMatch = dateStr.trim().match(/^(\d{4})[-\.](\d{1,2})[-\.](\d{1,2})$/);
+            if (dotMatch) {
+                day = parseInt(dotMatch[1], 10);
+                month = parseInt(dotMatch[2], 10) - 1;
+                year = parseInt(dotMatch[3], 10);
+            } else if (isoMatch) {
+                year = parseInt(isoMatch[1], 10);
+                month = parseInt(isoMatch[2], 10) - 1;
+                day = parseInt(isoMatch[3], 10);
+            } else {
+                return null;
+            }
+
+            let hours = 12, minutes = 0, seconds = 0;
+            const timeMatch = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+            if (timeMatch) {
+                hours = parseInt(timeMatch[1], 10);
+                minutes = parseInt(timeMatch[2], 10);
+                if (timeMatch[3]) seconds = parseInt(timeMatch[3], 10);
+            } else {
+                return null;
+            }
+
+            const d = new Date(year, month, day, hours, minutes, seconds);
+            return isNaN(d.getTime()) ? null : d;
+        },
+
         extractCardInfo: function (cardEl, index) {
             const linkEl = cardEl.querySelector('a');
             const ariaLabel = linkEl ? linkEl.getAttribute('aria-label') : (cardEl.getAttribute('aria-label') || '');
-            const parsedDate = this.parseDateFromAriaLabel(ariaLabel) || new Date();
+            let parsedDate = this.parseDateFromAriaLabel(ariaLabel);
+            if (!parsedDate) {
+                // Safe chronological fallback: never default to Date.now() which jumps to the top!
+                if (this.photos && this.photos.length > 0) {
+                    parsedDate = new Date(this.photos[this.photos.length - 1].timestamp.getTime() - (index + 1) * 60000);
+                } else {
+                    parsedDate = new Date(Date.now() - (index + 1) * 60000);
+                }
+            }
 
             // Extract media key from jslog="...; 8:AF1Qip..."
             let mediaKey = '';
@@ -282,9 +415,10 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const durationEl = cardEl.querySelector('.KhS5De');
             if (durationEl) {
                 const text = durationEl.textContent.trim();
-                if (/\d+:\d+/.test(text)) {
+                const durMatch = text.match(/\b(\d{1,2}:\d{2}(?::\d{2})?)\b/);
+                if (durMatch) {
                     isVideo = true;
-                    duration = text;
+                    duration = durMatch[1];
                 }
             }
 
@@ -293,6 +427,12 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 if (playSvg) {
                     isVideo = true;
                 }
+            }
+
+            // Final sanity clean: ensure duration has no extra text like "Duration 0:08"
+            if (duration) {
+                const cleanMatch = duration.match(/\b(\d{1,2}:\d{2}(?::\d{2})?)\b/);
+                if (cleanMatch) duration = cleanMatch[1];
             }
 
             const isSelected = cardEl.classList.contains('R1sU4e') ||
@@ -403,22 +543,17 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         },
 
         buildModalDOM: function () {
-            document.body.style.overflow = 'hidden';
-
+            const templates = window.TimTools.Modules.DragInTimeTemplates;
             const overlay = document.createElement('div');
-            overlay.className = 'gp-drag-modal-overlay uW2Fw-Sx9Kwc yaahMe V639qd un6WHd QaJAKf W6ZbFb';
-            overlay.style.cssText = `
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.65);
-                z-index: 1000000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                backdrop-filter: blur(4px);
-                font-family: 'Google Sans', Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
-                animation: gpFadeIn 0.2s ease-out;
-            `;
+            overlay.className = 'gp-drag-modal-overlay';
+            overlay.innerHTML = templates.getModalOverlayHtml();
+
+            // Prevent background page from receiving mousewheel events outside modalBody
+            overlay.addEventListener('wheel', (e) => {
+                if (!e.target.closest('.gp-drag-modal-body')) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
 
             // Backdrop click closes modal
             overlay.addEventListener('click', (e) => {
@@ -427,223 +562,76 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 }
             });
 
-            // Dialog container
-            const dialog = document.createElement('div');
-            dialog.className = 'gp-drag-modal-dialog uW2Fw-P5QLlc cPSYW';
-            dialog.setAttribute('role', 'dialog');
-            dialog.setAttribute('aria-modal', 'true');
-            dialog.style.cssText = `
-                background: #202124;
-                color: #e8eaed;
-                width: 860px;
-                max-width: 95vw;
-                height: 85vh;
-                max-height: 850px;
-                border-radius: 28px;
-                display: flex;
-                flex-direction: column;
-                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
-                overflow: hidden;
-                position: relative;
-            `;
+            // Wire buttons
+            const closeBtn = overlay.querySelector('.gp-modal-close-btn');
+            if (closeBtn) closeBtn.onclick = () => this.closeDragModal();
 
-            // 1. Header
-            const header = document.createElement('div');
-            header.className = 'gp-drag-modal-header uW2Fw-oclYLd Sj2qkc';
-            header.style.cssText = `
-                padding: 20px 24px 16px 24px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                flex-shrink: 0;
-            `;
-            header.innerHTML = `
-                <div style="display: flex; align-items: baseline; gap: 12px;">
-                    <h2 class="uW2Fw-k2Wrsb yu9oGe zBRznc AQxBIc" style="margin: 0; font-size: 22px; font-weight: 400; color: #e8eaed; letter-spacing: 0;">
-                        Preview changes
-                    </h2>
-                    <span style="font-size: 13px; color: #9aa0a6; font-weight: 400;">
-                        Drag in Time • Drag photos to reorder
-                    </span>
-                </div>
-                <button class="gp-modal-close-x" style="
-                    background: transparent;
-                    border: none;
-                    color: #9aa0a6;
-                    cursor: pointer;
-                    padding: 8px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: background-color 0.15s;
-                " title="Close">
-                    <svg width="20px" height="20px" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-                    </svg>
-                </button>
-            `;
-            header.querySelector('.gp-modal-close-x').onclick = () => this.closeDragModal();
+            const backBtn = overlay.querySelector('.gp-modal-back-btn');
+            if (backBtn) backBtn.onclick = () => this.closeDragModal();
 
-            // 2. Scrollable Body
-            const body = document.createElement('div');
-            body.className = 'gp-drag-modal-body';
-            body.style.cssText = `
-                flex: 1;
-                overflow-y: auto;
-                padding: 16px 24px;
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-                scroll-behavior: smooth;
-            `;
+            const saveBtn = overlay.querySelector('.gp-modal-save-btn');
+            if (saveBtn) saveBtn.onclick = () => this.handleSaveModalChanges();
 
-            // Top "Load newer photos" button
-            const topLoadBtn = document.createElement('button');
-            topLoadBtn.className = 'gp-load-btn gp-load-newer';
-            topLoadBtn.style.cssText = `
-                align-self: center;
-                background: rgba(255, 255, 255, 0.08);
-                color: #8ab4f8;
-                border: 1px dashed rgba(138, 180, 248, 0.5);
-                border-radius: 18px;
-                padding: 8px 20px;
-                font-size: 13px;
-                font-weight: 500;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin: 4px auto 8px auto;
-                transition: background-color 0.2s, border-color 0.2s;
-            `;
-            topLoadBtn.innerHTML = `<span>▲ Load newer photos</span>`;
-            topLoadBtn.onmouseenter = () => { topLoadBtn.style.background = 'rgba(138, 180, 248, 0.15)'; };
-            topLoadBtn.onmouseleave = () => { topLoadBtn.style.background = 'rgba(255, 255, 255, 0.08)'; };
-            topLoadBtn.onclick = () => this.loadMorePhotos('newer');
-            body.appendChild(topLoadBtn);
+            const topLoadBtn = overlay.querySelector('.gp-load-newer');
+            if (topLoadBtn) topLoadBtn.onclick = () => this.loadMorePhotos('newer');
 
-            // Container for photo cards grouped by date
-            const gridContainer = document.createElement('div');
-            gridContainer.className = 'gp-photos-stream-container';
-            gridContainer.style.cssText = `
-                display: flex;
-                flex-direction: column;
-                gap: 20px;
-                min-height: 120px;
-            `;
-            body.appendChild(gridContainer);
-
-            // Bottom "Load older photos" button
-            const bottomLoadBtn = document.createElement('button');
-            bottomLoadBtn.className = 'gp-load-btn gp-load-older';
-            bottomLoadBtn.style.cssText = `
-                align-self: center;
-                background: rgba(255, 255, 255, 0.08);
-                color: #8ab4f8;
-                border: 1px dashed rgba(138, 180, 248, 0.5);
-                border-radius: 18px;
-                padding: 8px 20px;
-                font-size: 13px;
-                font-weight: 500;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin: 16px auto 24px auto;
-                transition: background-color 0.2s, border-color 0.2s;
-            `;
-            bottomLoadBtn.innerHTML = `<span>▼ Load older photos</span>`;
-            bottomLoadBtn.onmouseenter = () => { bottomLoadBtn.style.background = 'rgba(138, 180, 248, 0.15)'; };
-            bottomLoadBtn.onmouseleave = () => { bottomLoadBtn.style.background = 'rgba(255, 255, 255, 0.08)'; };
-            bottomLoadBtn.onclick = () => this.loadMorePhotos('older');
-            body.appendChild(bottomLoadBtn);
-
-            // 3. Footer
-            const footer = document.createElement('div');
-            footer.className = 'gp-drag-modal-footer uW2Fw-T0kwCb IdSMxc';
-            footer.style.cssText = `
-                padding: 16px 24px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                border-top: 1px solid rgba(255, 255, 255, 0.1);
-                flex-shrink: 0;
-                background: #202124;
-            `;
-
-            const statusInfo = document.createElement('div');
-            statusInfo.className = 'gp-modal-status-info';
-            statusInfo.style.cssText = `
-                font-size: 13px;
-                color: #9aa0a6;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            `;
-            const selectedCount = this.photos.filter(p => p.isSelected).length;
-            statusInfo.innerHTML = `
-                <span class="gp-count-loaded">${this.photos.length} photos loaded</span>
-                <span class="gp-selected-badge" style="${selectedCount > 0 ? '' : 'display: none;'} background: rgba(138, 180, 248, 0.15); color: #8ab4f8; padding: 2px 8px; border-radius: 10px; font-weight: 500; font-size: 11px;">
-                    ${selectedCount} selected
-                </span>
-                <span class="gp-modified-badge" style="display: none; background: rgba(138, 180, 248, 0.2); color: #8ab4f8; padding: 2px 8px; border-radius: 10px; font-weight: 500; font-size: 11px;">
-                    0 modified
-                </span>
-            `;
-
-            const btnGroup = document.createElement('div');
-            btnGroup.style.cssText = `display: flex; align-items: center; gap: 12px;`;
-
-            const backBtn = document.createElement('button');
-            backBtn.className = 'mUIrbf-LgbsSe oFJeZc gp-modal-back-btn';
-            backBtn.style.cssText = `
-                background: transparent;
-                color: #8ab4f8;
-                border: 1px solid #5f6368;
-                border-radius: 20px;
-                padding: 0 24px;
-                height: 36px;
-                font-size: 14px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: background-color 0.15s, border-color 0.15s;
-            `;
-            backBtn.textContent = 'Back';
-            backBtn.onclick = () => this.closeDragModal();
-
-            const saveBtn = document.createElement('button');
-            saveBtn.className = 'UywwFc-LgbsSe kDryjd gp-modal-save-btn';
-            saveBtn.style.cssText = `
-                background-color: #8ab4f8;
-                color: #202124;
-                border: none;
-                border-radius: 20px;
-                padding: 0 24px;
-                height: 36px;
-                font-size: 14px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: background-color 0.15s, box-shadow 0.15s;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            `;
-            saveBtn.textContent = 'Save';
-            saveBtn.onclick = () => this.handleSaveModalChanges();
-
-            btnGroup.appendChild(backBtn);
-            btnGroup.appendChild(saveBtn);
-
-            footer.appendChild(statusInfo);
-            footer.appendChild(btnGroup);
-
-            dialog.appendChild(header);
-            dialog.appendChild(body);
-            dialog.appendChild(footer);
-            overlay.appendChild(dialog);
+            const bottomLoadBtn = overlay.querySelector('.gp-load-older');
+            if (bottomLoadBtn) bottomLoadBtn.onclick = () => this.loadMorePhotos('older');
 
             document.body.appendChild(overlay);
             this.modalOverlay = overlay;
+
+            // Auto-scroll infinite stream loader: automatically fetches older photos at bottom and newer photos at top
+            const modalBody = overlay.querySelector('.gp-drag-modal-body');
+
+            if (modalBody) {
+                const checkAutoScroll = () => {
+                    if (this.isLoadingMore || this.isDragging) return;
+
+                    const scrollTop = modalBody.scrollTop;
+                    const scrollHeight = modalBody.scrollHeight;
+                    const clientHeight = modalBody.clientHeight;
+
+                    // 1. Approaching bottom (within 400px) -> load older photos automatically!
+                    if (scrollTop + clientHeight >= scrollHeight - 400) {
+                        this.loadMorePhotos('older');
+                    }
+                    // 2. Approaching top (within 150px) and not already at newest -> load newer photos automatically!
+                    else if (scrollTop <= 150 && !this.checkIfAtNewestPhotos()) {
+                        const prevScrollHeight = modalBody.scrollHeight;
+                        this.loadMorePhotos('newer', (count) => {
+                            if (count > 0 && modalBody) {
+                                const newScrollHeight = modalBody.scrollHeight;
+                                modalBody.scrollTop = scrollTop + (newScrollHeight - prevScrollHeight);
+                            }
+                        });
+                    }
+                };
+
+                modalBody.addEventListener('scroll', checkAutoScroll, { passive: true });
+
+                // Also listen to wheel events so that when the user is at the very bottom or top,
+                // attempting to scroll further still triggers loadMorePhotos even if scrollTop doesn't change
+                modalBody.addEventListener('wheel', (e) => {
+                    if (this.isLoadingMore || this.isDragging) return;
+
+                    const scrollTop = modalBody.scrollTop;
+                    const scrollHeight = modalBody.scrollHeight;
+                    const clientHeight = modalBody.clientHeight;
+
+                    if (e.deltaY > 0 && (scrollTop + clientHeight >= scrollHeight - 120)) {
+                        this.loadMorePhotos('older');
+                    } else if (e.deltaY < 0 && scrollTop <= 120 && !this.checkIfAtNewestPhotos()) {
+                        const prevScrollHeight = modalBody.scrollHeight;
+                        this.loadMorePhotos('newer', (count) => {
+                            if (count > 0 && modalBody) {
+                                const newScrollHeight = modalBody.scrollHeight;
+                                modalBody.scrollTop = scrollTop + (newScrollHeight - prevScrollHeight);
+                            }
+                        });
+                    }
+                }, { passive: true });
+            }
 
             // Render photo cards into container
             this.renderModalPhotos();
@@ -698,40 +686,17 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             groups.forEach((items, dayHeader) => {
                 const groupSection = document.createElement('div');
                 groupSection.className = 'gp-date-group-section';
-                groupSection.style.cssText = `
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                `;
 
-                // Date Header styled like Google's H2.ZEmz6b
-                const headerEl = document.createElement('h2');
-                headerEl.className = 'ZEmz6b';
-                headerEl.style.cssText = `
-                    font-size: 14px;
-                    font-weight: 500;
-                    color: #9aa0a6;
-                    margin: 0;
-                    padding: 4px 0;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                `;
+                const headerEl = document.createElement('div');
+                headerEl.className = 'gp-date-group-header';
                 headerEl.innerHTML = `
                     <span>${dayHeader}</span>
-                    <span style="font-size: 11px; opacity: 0.6;">(${items.length} ${items.length === 1 ? 'item' : 'items'})</span>
+                    <span class="gp-date-group-count">(${items.length} ${items.length === 1 ? 'item' : 'items'})</span>
                 `;
                 groupSection.appendChild(headerEl);
 
-                // Row of photo cards
                 const cardGrid = document.createElement('div');
-                cardGrid.className = 'gp-cards-row-grid';
-                cardGrid.style.cssText = `
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 8px;
-                    align-items: flex-start;
-                `;
+                cardGrid.className = 'gp-date-group-grid';
 
                 items.forEach(photo => {
                     const card = this.createModalPhotoCard(photo);
@@ -747,163 +712,242 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         },
 
         createModalPhotoCard: function (photo) {
+            const templates = window.TimTools.Modules.DragInTimeTemplates;
             const card = document.createElement('div');
-            card.className = 'gp-modal-photo-card rtIMgb GQzRlf Blknbd';
+            card.className = `gp-modal-photo-card ${photo.isSelected ? 'is-draggable' : ''} ${photo.isModified ? 'is-modified' : ''}`;
             card.setAttribute('data-photo-id', photo.mediaKey);
+            card.setAttribute('data-is-selected', photo.isSelected ? 'true' : 'false');
+            card.setAttribute('draggable', photo.isSelected ? 'true' : 'false');
 
-            const isSelected = !!photo.isSelected;
-            const isModified = !!photo.isModified;
-            const customDateStr = this.formatCustomDate(photo.timestamp);
-            const shortTimeStr = this.formatShortTime(photo.timestamp);
+            const options = {
+                formattedTime: this.formatShortTime(photo.timestamp),
+                fullDateTime: this.formatCustomDate(photo.timestamp),
+                gmtString: this.formatTimezoneString(photo.timestamp),
+                dateString: this.formatDateDisplay(photo.timestamp)
+            };
 
-            card.setAttribute('data-is-selected', isSelected ? 'true' : 'false');
-            if (isSelected) {
-                card.setAttribute('draggable', 'true');
-            } else {
-                card.setAttribute('draggable', 'false');
-            }
+            card.innerHTML = templates.getPhotoCardHtml(photo, options);
 
-            card.style.cssText = `
-                width: 146px;
-                height: 138px;
-                border-radius: 8px;
-                overflow: hidden;
-                position: relative;
-                background: #28292c;
-                box-sizing: border-box;
-                border: 2px solid ${isModified ? '#8ab4f8' : (isSelected ? 'rgba(138, 180, 248, 0.85)' : 'rgba(255, 255, 255, 0.1)')};
-                cursor: ${isSelected ? 'grab' : 'default'};
-                transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                user-select: none;
-                box-shadow: ${isModified ? '0 0 10px rgba(138, 180, 248, 0.5)' : (isSelected ? '0 0 8px rgba(138, 180, 248, 0.25)' : 'none')};
-            `;
+            // 1. Setup Bottom Timeline Slider (State 2)
+            this.setupCardSlider(card, photo);
 
-            // Card Inner HTML
-            card.innerHTML = `
-                <!-- Thumbnail Image Area -->
-                <div class="gp-thumb-area" style="
-                    position: absolute;
-                    inset: 0;
-                    background-image: url('${photo.bgUrl || ''}');
-                    background-size: cover;
-                    background-position: center;
-                    background-repeat: no-repeat;
-                    z-index: 1;
-                ">
-                    <!-- Top Gradient for badges -->
-                    <div style="position: absolute; top: 0; left: 0; right: 0; height: 32px; background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%);"></div>
-                    <!-- Bottom Gradient for time label -->
-                    <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 48px; background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, transparent 100%);"></div>
-                </div>
+            // 2. Setup Manual Date & Time Editor (State 3)
+            this.setupCardManualEdit(card, photo);
 
-                <!-- Top Row: Selected badge & Video duration -->
-                <div style="position: relative; z-index: 5; padding: 4px 6px; display: flex; align-items: center; justify-content: space-between;">
-                    ${isSelected ? `
-                        <span style="background: #8ab4f8; color: #202124; font-size: 9px; font-weight: bold; padding: 1px 5px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.5);">
-                            SELECTED
-                        </span>
-                    ` : `<span></span>`}
-
-                    ${photo.isVideo ? `
-                        <div class="KhS5De" style="background: rgba(0,0,0,0.65); color: #fff; font-size: 10px; padding: 2px 5px; border-radius: 4px; display: flex; align-items: center; gap: 4px; font-weight: 500;">
-                            <svg width="10px" height="10px" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                            <span>${photo.duration || 'VIDEO'}</span>
-                        </div>
-                    ` : `<span></span>`}
-                </div>
-
-                <!-- Bottom Row: Time label and editable input -->
-                <div class="gp-card-bottom" style="position: relative; z-index: 5; padding: 4px 6px; display: flex; flex-direction: column; gap: 2px;">
-                    ${isModified ? `
-                        <div style="align-self: flex-start; background: #8ab4f8; color: #202124; font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; letter-spacing: 0.5px;">
-                            NEW TIME
-                        </div>
-                    ` : ''}
-                    <div class="gp-time-display" style="color: #fff; font-size: 11px; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: space-between;" title="${isSelected ? 'Drag to reorder photo in time' : ''}">
-                        <span>${shortTimeStr}</span>
-                        ${isSelected ? `<span style="font-size: 9px; opacity: 0.7;">☰ drag</span>` : ''}
-                    </div>
-                    <input type="text" class="gp-inline-time-input" value="${customDateStr}" style="
-                        display: none;
-                        background: #202124;
-                        color: #fff;
-                        border: 1px solid #8ab4f8;
-                        border-radius: 3px;
-                        font-size: 9px;
-                        font-family: monospace;
-                        padding: 2px 3px;
-                        width: 100%;
-                        box-sizing: border-box;
-                    ">
-                </div>
-            `;
-
-            // Inline date editing on click
-            const timeDisplay = card.querySelector('.gp-time-display');
-            const timeInput = card.querySelector('.gp-inline-time-input');
-
-            timeDisplay.addEventListener('dblclick', (e) => {
-                e.stopPropagation();
-                timeDisplay.style.display = 'none';
-                timeInput.style.display = 'block';
-                timeInput.focus();
-                timeInput.select();
-            });
-
-            timeInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    timeInput.blur();
-                } else if (e.key === 'Escape') {
-                    timeInput.value = customDateStr;
-                    timeInput.style.display = 'none';
-                    timeDisplay.style.display = 'flex';
-                }
-            });
-
-            timeInput.addEventListener('blur', () => {
-                timeInput.style.display = 'none';
-                timeDisplay.style.display = 'flex';
-                const parsed = this.parseCustomDateString(timeInput.value);
-                if (parsed && !isNaN(parsed.getTime())) {
-                    log(`Manual time edit for photo ${photo.mediaKey}:`, this.formatCustomDate(parsed));
-                    photo.timestamp = parsed;
-                    photo.isModified = true;
-                    this.modifiedTimestamps.set(photo.mediaKey, {
-                        photo: photo,
-                        oldDate: photo.originalTimestamp,
-                        newDate: parsed
-                    });
-                    this.renderModalPhotos();
-                } else {
-                    timeInput.value = customDateStr;
-                }
-            });
-
-            // Drag & Drop event wiring
+            // 3. Drag & Drop event wiring
             this.wireCardDragEvents(card, photo);
 
             return card;
         },
 
+        setupCardSlider: function (card, photo) {
+            const sliderWrapper = card.querySelector('.gp-card-slider-wrapper');
+            const slider = card.querySelector('.gp-time-slider');
+            if (!slider || !sliderWrapper) return;
+
+            // Stop pointer/mouse events from propagating to prevent card drag
+            const stopDrag = (e) => {
+                e.stopPropagation();
+            };
+            sliderWrapper.addEventListener('mousedown', stopDrag);
+            sliderWrapper.addEventListener('pointerdown', stopDrag);
+            slider.addEventListener('mousedown', stopDrag);
+            slider.addEventListener('pointerdown', stopDrag);
+
+            // Calculate neighbor timestamps
+            // Photos are sorted descending by time (newer at index 0, older at end)
+            let newerTime = (photo._index > 0)
+                ? this.photos[photo._index - 1].timestamp.getTime()
+                : (photo.timestamp.getTime() + 3600000);
+            let olderTime = (photo._index < this.photos.length - 1)
+                ? this.photos[photo._index + 1].timestamp.getTime()
+                : (photo.timestamp.getTime() - 3600000);
+
+            if (newerTime <= olderTime) {
+                newerTime = photo.timestamp.getTime() + 60000;
+                olderTime = photo.timestamp.getTime() - 60000;
+            }
+
+            const diffMs = newerTime - olderTime;
+            const totalMinutes = Math.round(diffMs / 60000);
+            const stepCount = Math.max(10, Math.min(totalMinutes, 500));
+
+            slider.min = '0';
+            slider.max = String(stepCount);
+
+            // Left edge = newerTime (val = 0), Right edge = olderTime (val = stepCount)
+            const currentTime = photo.timestamp.getTime();
+            const currentFraction = Math.max(0, Math.min(1, (newerTime - currentTime) / diffMs));
+            slider.value = String(Math.round(currentFraction * stepCount));
+
+            slider.addEventListener('input', (e) => {
+                e.stopPropagation();
+                const val = parseInt(slider.value, 10);
+                const fraction = val / stepCount;
+                const newTimestampMs = Math.round(newerTime - fraction * diffMs);
+                const newDate = new Date(newTimestampMs);
+
+                photo.timestamp = newDate;
+                photo.isModified = true;
+
+                // Update digits in bottom-left in real time
+                const timeDisplay = card.querySelector('.gp-card-time-display');
+                if (timeDisplay) {
+                    timeDisplay.textContent = this.formatShortTime(newDate);
+                }
+
+                // Update manual bar inputs in background
+                const inputTime = card.querySelector('.gp-input-time');
+                const inputDate = card.querySelector('.gp-input-date');
+                if (inputTime) inputTime.value = `${this.formatShortTime(newDate)}:${String(newDate.getSeconds()).padStart(2, '0')}`;
+                if (inputDate) inputDate.value = this.formatDateDisplay(newDate);
+
+                // Add modified badge
+                card.classList.add('is-modified');
+                const modBadge = card.querySelector('.gp-card-modified-badge');
+                if (modBadge) modBadge.style.display = 'block';
+
+                // Record in modifiedTimestamps
+                this.modifiedTimestamps.set(photo.mediaKey, {
+                    photo: photo,
+                    oldDate: photo.originalTimestamp,
+                    newDate: newDate
+                });
+
+                this.updateModifiedCounter();
+            });
+        },
+
+        setupCardManualEdit: function (card, photo) {
+            // ONLY initially selected photos can be manually edited!
+            if (!photo.isSelected) return;
+
+            const timeDisplay = card.querySelector('.gp-card-time-display');
+            const manualBar = card.querySelector('.gp-card-manual-bar');
+            if (!timeDisplay || !manualBar) return;
+
+            const inputTime = manualBar.querySelector('.gp-input-time');
+            const inputTz = manualBar.querySelector('.gp-input-tz');
+            const inputDate = manualBar.querySelector('.gp-input-date');
+            if (!inputTime || !inputTz || !inputDate) return;
+
+            // Stop pointer/mouse events from propagating to prevent card drag
+            const stopProp = (e) => e.stopPropagation();
+            manualBar.addEventListener('mousedown', stopProp);
+            manualBar.addEventListener('pointerdown', stopProp);
+
+            const openManualBar = (e) => {
+                if (e) e.stopPropagation();
+                card.classList.add('is-manual-mode');
+                manualBar.style.display = 'flex';
+
+                const d = photo.timestamp;
+                inputTime.value = `${this.formatShortTime(d)}:${String(d.getSeconds()).padStart(2, '0')}`;
+                inputTz.value = this.formatTimezoneString(d);
+                inputDate.value = this.formatDateDisplay(d);
+
+                inputTime.focus();
+                inputTime.select();
+            };
+
+            const closeManualBar = () => {
+                card.classList.remove('is-manual-mode');
+                manualBar.style.display = 'none';
+            };
+
+            const commitChanges = () => {
+                if (!card.classList.contains('is-manual-mode')) return;
+
+                const parsedDate = this.parseManualInputs(inputDate.value, inputTime.value, inputTz.value);
+                if (parsedDate && !isNaN(parsedDate.getTime())) {
+                    const timeChanged = parsedDate.getTime() !== photo.timestamp.getTime();
+                    photo.timestamp = parsedDate;
+
+                    if (timeChanged || parsedDate.getTime() !== photo.originalTimestamp.getTime()) {
+                        photo.isModified = true;
+                        this.modifiedTimestamps.set(photo.mediaKey, {
+                            photo: photo,
+                            oldDate: photo.originalTimestamp,
+                            newDate: parsedDate
+                        });
+                        this.updateModifiedCounter();
+                    }
+
+                    closeManualBar();
+
+                    // Re-sort chronologically (newest at top) and immediately re-render stream
+                    this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+                    this.renderModalPhotos();
+                } else {
+                    closeManualBar();
+                }
+            };
+
+            timeDisplay.addEventListener('click', openManualBar);
+
+            // Commit on Enter, cancel on Escape
+            [inputTime, inputTz, inputDate].forEach(input => {
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        commitChanges();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closeManualBar();
+                    }
+                });
+            });
+
+            // Commit when focus leaves the manual bar
+            manualBar.addEventListener('focusout', (e) => {
+                if (e.relatedTarget && manualBar.contains(e.relatedTarget)) {
+                    return;
+                }
+                setTimeout(() => {
+                    if (!manualBar.contains(document.activeElement)) {
+                        commitChanges();
+                    }
+                }, 100);
+            });
+        },
+
         // --- Step 5: Smooth Drag & Drop Inside Modal ---
         wireCardDragEvents: function (card, photo) {
-            if (!photo.isSelected) {
-                // Unselected photos cannot be dragged
-                card.addEventListener('dragstart', (e) => {
-                    e.preventDefault();
-                    return false;
+            if (photo.isSelected) {
+                // Disable draggable whenever pointer touches the bottom 25% (1/4) of the card,
+                // or slider / manual bar / time digits, so dragging the card is impossible from the bottom.
+                card.addEventListener('pointerdown', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const relY = e.clientY - rect.top;
+                    if (relY > rect.height * 0.75 || e.target.closest('.gp-card-slider-wrapper, .gp-time-slider, .gp-card-manual-bar, .gp-card-time-display, input')) {
+                        card.setAttribute('draggable', 'false');
+                    } else {
+                        card.setAttribute('draggable', 'true');
+                    }
                 });
-            } else {
+
+                window.addEventListener('pointerup', () => {
+                    if (photo.isSelected) {
+                        card.setAttribute('draggable', 'true');
+                    }
+                }, { passive: true });
+
                 card.addEventListener('dragstart', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const relY = e.clientY - rect.top;
+                    // Prevent drag if starting from the bottom 25% or interactive elements
+                    if (relY > rect.height * 0.75 || e.target.closest('.gp-card-slider-wrapper, .gp-time-slider, .gp-card-manual-bar, .gp-card-time-display, input')) {
+                        e.preventDefault();
+                        return false;
+                    }
+
                     this.isDragging = true;
                     this.draggedPhotoId = photo.mediaKey;
                     this.dragSourceIndex = this.photos.findIndex(p => p.mediaKey === photo.mediaKey);
 
-                    card.style.opacity = '0.35';
-                    card.style.transform = 'scale(0.95)';
+                    card.classList.add('is-dragging');
                     e.dataTransfer.effectAllowed = 'move';
                     e.dataTransfer.setData('text/plain', photo.mediaKey);
 
@@ -911,16 +955,21 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 });
 
                 card.addEventListener('dragend', () => {
-                    card.style.opacity = '1';
-                    card.style.transform = '';
+                    card.classList.remove('is-dragging');
                     this.cleanupDropIndicators();
                     this.isDragging = false;
                     this.draggedPhotoId = null;
                     this.dragSourceIndex = -1;
                 });
+            } else {
+                card.setAttribute('draggable', 'false');
+                card.addEventListener('dragstart', (e) => {
+                    e.preventDefault();
+                    return false;
+                });
             }
 
-            // Both selected and unselected photos can receive drop events!
+            // CRITICAL: Both selected and unselected photos MUST receive drop events!
             card.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
@@ -937,7 +986,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             card.addEventListener('dragleave', (e) => {
                 const related = e.relatedTarget;
                 if (!card.contains(related)) {
-                    this.cleanupCardIndicator(card, photo);
+                    this.cleanupCardIndicator(card);
                 }
             });
 
@@ -963,26 +1012,23 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         showDropIndicator: function (card, side) {
             this.cleanupDropIndicators();
             if (side === 'left') {
-                card.style.borderLeft = '4px solid #8ab4f8';
+                card.classList.add('drag-over-before');
             } else {
-                card.style.borderRight = '4px solid #8ab4f8';
+                card.classList.add('drag-over-after');
             }
         },
 
-        cleanupCardIndicator: function (card, photo) {
-            card.style.borderLeft = '';
-            card.style.borderRight = '';
-            const isSelected = photo.isSelected;
-            const isModified = photo.isModified;
-            card.style.border = `2px solid ${isModified ? '#8ab4f8' : (isSelected ? 'rgba(138, 180, 248, 0.85)' : 'rgba(255, 255, 255, 0.1)')}`;
+        cleanupCardIndicator: function (card) {
+            card.classList.remove('drag-over-before');
+            card.classList.remove('drag-over-after');
         },
 
         cleanupDropIndicators: function () {
             if (!this.modalOverlay) return;
             const cards = this.modalOverlay.querySelectorAll('.gp-modal-photo-card');
             cards.forEach(c => {
-                c.style.borderLeft = '';
-                c.style.borderRight = '';
+                c.classList.remove('drag-over-before');
+                c.classList.remove('drag-over-after');
             });
         },
 
@@ -1009,8 +1055,6 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             this.photos.splice(insertIdx, 0, draggedPhoto);
 
             // Calculate new timestamp based on neighbors
-            // Note: In our array, photos are in reverse chronological order (newest to oldest),
-            // or chronologically. Let's inspect neighbor timestamps:
             const neighborPrev = (insertIdx > 0) ? this.photos[insertIdx - 1] : null;
             const neighborNext = (insertIdx < this.photos.length - 1) ? this.photos[insertIdx + 1] : null;
 
@@ -1019,15 +1063,12 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             if (neighborPrev && neighborNext) {
                 const timeA = neighborPrev.timestamp.getTime();
                 const timeB = neighborNext.timestamp.getTime();
-                // Midpoint between previous and next
                 newTimestampMs = Math.round(timeA + (timeB - timeA) / 2);
                 log(`Calculated midpoint between ${this.formatCustomDate(neighborPrev.timestamp)} and ${this.formatCustomDate(neighborNext.timestamp)}`);
             } else if (neighborNext) {
-                // At very start of list: 1 minute difference in same trend direction
                 const timeNext = neighborNext.timestamp.getTime();
                 newTimestampMs = timeNext + 60000;
             } else if (neighborPrev) {
-                // At very end of list: 1 minute difference
                 const timePrev = neighborPrev.timestamp.getTime();
                 newTimestampMs = timePrev - 60000;
             } else {
@@ -1040,14 +1081,12 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
             log(`NEW TIMESTAMP FOR ${draggedPhoto.mediaKey}:`, this.formatCustomDate(calculatedDate));
 
-            // Record in modified map
             this.modifiedTimestamps.set(draggedPhoto.mediaKey, {
                 photo: draggedPhoto,
                 oldDate: draggedPhoto.originalTimestamp,
                 newDate: calculatedDate
             });
 
-            // Re-render modal photo stream
             this.renderModalPhotos();
         },
 
@@ -1081,7 +1120,6 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const firstCard = allCards[0];
             const firstCardInfo = this.extractCardInfo(firstCard, 0);
 
-            // In our photos array (sorted newest to oldest), photos[0] is the newest photo currently in modal
             const modalNewest = this.photos[0];
             const isFirstCardInModal = modalNewest.mediaKey === firstCardInfo.mediaKey ||
                                        modalNewest.timestamp.getTime() >= firstCardInfo.timestamp.getTime();
@@ -1094,48 +1132,75 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const topLoadBtn = this.modalOverlay.querySelector('.gp-load-newer');
             const bottomLoadBtn = this.modalOverlay.querySelector('.gp-load-older');
 
-            if (topLoadBtn) {
-                const isAtNewest = this.checkIfAtNewestPhotos();
-                topLoadBtn.style.display = isAtNewest ? 'none' : 'flex';
-                log('Top button (load newer) visibility:', isAtNewest ? 'HIDDEN (already at newest photos)' : 'VISIBLE');
-            }
+            // Managed seamlessly via auto-scroll
+            if (topLoadBtn) topLoadBtn.style.display = 'none';
+            if (bottomLoadBtn) bottomLoadBtn.style.display = 'none';
+        },
 
-            if (bottomLoadBtn) {
-                bottomLoadBtn.style.display = (this.photos && this.photos.length > 0) ? 'flex' : 'none';
+        showStreamLoadingIndicator: function (direction, isVisible) {
+            if (!this.modalOverlay) return;
+            let indicator = this.modalOverlay.querySelector('.gp-stream-loading-indicator');
+            if (isVisible) {
+                if (!indicator) {
+                    indicator = document.createElement('div');
+                    indicator.className = 'gp-stream-loading-indicator';
+                    indicator.innerHTML = `
+                        <div class="gp-stream-spinner"></div>
+                        <span>Loading more photos...</span>
+                    `;
+                    const container = this.modalOverlay.querySelector('.gp-photos-stream-container');
+                    if (container) {
+                        if (direction === 'newer') {
+                            container.prepend(indicator);
+                        } else {
+                            container.appendChild(indicator);
+                        }
+                    }
+                }
+            } else if (indicator) {
+                indicator.remove();
             }
         },
 
         // --- Step 7: Load More Photos (Top / Bottom) ---
-        loadMorePhotos: function (direction) {
-            log(`Loading more photos (${direction})...`);
+        loadMorePhotos: function (direction, onComplete) {
+            if (this.isLoadingMore) {
+                if (onComplete) onComplete(0);
+                return;
+            }
+
+            this.isLoadingMore = true;
+            log(`[Auto-Scroll] Checking for more photos (${direction})...`);
+
             const currentKeys = new Set(this.photos.map(p => p.mediaKey));
             const allCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR));
             const allParsed = allCards.map((el, i) => this.extractCardInfo(el, i));
 
+            // 1. Check if unrendered photo cards already exist in the background page DOM
             let candidates = [];
             if (direction === 'newer') {
-                const newestTime = this.photos.length > 0 ? this.photos[0].timestamp.getTime() : 0;
-                candidates = allParsed.filter(p => !currentKeys.has(p.mediaKey) && p.timestamp.getTime() >= newestTime);
+                const firstModalIdx = allParsed.findIndex(p => currentKeys.has(p.mediaKey));
+                if (firstModalIdx > 0) {
+                    candidates = allParsed.slice(0, firstModalIdx).filter(p => !currentKeys.has(p.mediaKey));
+                }
                 if (candidates.length === 0) {
-                    const firstModalIdx = allParsed.findIndex(p => currentKeys.has(p.mediaKey));
-                    if (firstModalIdx > 0) {
-                        candidates = allParsed.slice(0, firstModalIdx).filter(p => !currentKeys.has(p.mediaKey));
-                    }
+                    const newestTime = this.photos.length > 0 ? this.photos[0].timestamp.getTime() : 0;
+                    candidates = allParsed.filter(p => !currentKeys.has(p.mediaKey) && p.timestamp.getTime() >= newestTime);
                 }
             } else {
-                const oldestTime = this.photos.length > 0 ? this.photos[this.photos.length - 1].timestamp.getTime() : Infinity;
-                candidates = allParsed.filter(p => !currentKeys.has(p.mediaKey) && p.timestamp.getTime() <= oldestTime);
+                let lastModalIdx = -1;
+                for (let i = allParsed.length - 1; i >= 0; i--) {
+                    if (currentKeys.has(allParsed[i].mediaKey)) {
+                        lastModalIdx = i;
+                        break;
+                    }
+                }
+                if (lastModalIdx !== -1 && lastModalIdx < allParsed.length - 1) {
+                    candidates = allParsed.slice(lastModalIdx + 1).filter(p => !currentKeys.has(p.mediaKey));
+                }
                 if (candidates.length === 0) {
-                    let lastModalIdx = -1;
-                    for (let i = allParsed.length - 1; i >= 0; i--) {
-                        if (currentKeys.has(allParsed[i].mediaKey)) {
-                            lastModalIdx = i;
-                            break;
-                        }
-                    }
-                    if (lastModalIdx !== -1 && lastModalIdx < allParsed.length - 1) {
-                        candidates = allParsed.slice(lastModalIdx + 1).filter(p => !currentKeys.has(p.mediaKey));
-                    }
+                    const oldestTime = this.photos.length > 0 ? this.photos[this.photos.length - 1].timestamp.getTime() : Infinity;
+                    candidates = allParsed.filter(p => !currentKeys.has(p.mediaKey) && p.timestamp.getTime() <= oldestTime);
                 }
             }
 
@@ -1149,36 +1214,162 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             });
 
             if (addedCount > 0) {
-                log(`Added ${addedCount} ${direction} photos from DOM.`);
+                log(`[Auto-Scroll] Instantly added ${addedCount} ${direction} photos from available DOM cards.`);
                 this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
                 this.renderModalPhotos();
-            } else {
-                log(`No extra ${direction} cards currently in DOM. Scrolling main page to fetch more...`);
-                // Scroll up for newer (-800), down for older (+800)
-                const scrollDelta = (direction === 'newer') ? -800 : 800;
-                window.scrollBy({ top: scrollDelta, behavior: 'smooth' });
+                this.isLoadingMore = false;
+                if (onComplete) onComplete(addedCount);
+                return;
+            }
 
-                setTimeout(() => {
-                    const freshCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR));
-                    freshCards.forEach((el, i) => {
-                        const info = this.extractCardInfo(el, i);
-                        if (!currentKeys.has(info.mediaKey)) {
-                            if (direction === 'newer' && this.photos.length > 0 && info.timestamp.getTime() < this.photos[0].timestamp.getTime()) {
-                                return;
-                            }
-                            if (direction === 'older' && this.photos.length > 0 && info.timestamp.getTime() > this.photos[this.photos.length - 1].timestamp.getTime()) {
-                                return;
-                            }
-                            this.photos.push(info);
-                            currentKeys.add(info.mediaKey);
-                            addedCount++;
+            // 2. No cached DOM cards -> Trigger Google Photos' virtual scroller to load fresh batch from servers
+            log(`[Auto-Scroll] No cached DOM cards. Scrolling background page to trigger Google Photos virtualizer...`);
+            this.showStreamLoadingIndicator(direction, true);
+
+            // Collect all scroll targets for the background Google Photos photostream
+            const allMainCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR));
+            const edgeCard = (direction === 'older') ? allMainCards[allMainCards.length - 1] : allMainCards[0];
+            const scrollTargets = [];
+
+            if (edgeCard) {
+                let p = edgeCard.parentElement;
+                while (p && p !== document.body && p !== document.documentElement) {
+                    if (p.scrollHeight > p.clientHeight || window.getComputedStyle(p).overflowY !== 'visible') {
+                        scrollTargets.push(p);
+                    }
+                    p = p.parentElement;
+                }
+            }
+            scrollTargets.push(window);
+            if (document.scrollingElement) scrollTargets.push(document.scrollingElement);
+            if (document.documentElement) scrollTargets.push(document.documentElement);
+
+            const triggerScrollNudge = () => {
+                if (edgeCard) {
+                    try {
+                        edgeCard.scrollIntoView({ behavior: 'auto', block: direction === 'older' ? 'end' : 'start' });
+                    } catch (e) {}
+                }
+                const delta = direction === 'older' ? 3200 : -3200;
+                scrollTargets.forEach(target => {
+                    try {
+                        if (target.scrollBy) {
+                            target.scrollBy(0, delta);
+                        } else if (target.scrollTop !== undefined) {
+                            target.scrollTop += delta;
+                        }
+                        target.dispatchEvent(new Event('scroll', { bubbles: true }));
+                        target.dispatchEvent(new WheelEvent('wheel', {
+                            deltaY: delta > 0 ? 1200 : -1200,
+                            deltaMode: 0,
+                            bubbles: true,
+                            cancelable: true,
+                            view: window
+                        }));
+                    } catch (e) {}
+                });
+
+                try {
+                    window.dispatchEvent(new Event('scroll', { bubbles: true }));
+                    document.dispatchEvent(new Event('scroll', { bubbles: true }));
+                    const key = direction === 'older' ? 'PageDown' : 'PageUp';
+                    const keyCode = direction === 'older' ? 34 : 33;
+                    const keyEvent = new KeyboardEvent('keydown', {
+                        key: key,
+                        code: key,
+                        keyCode: keyCode,
+                        which: keyCode,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    document.dispatchEvent(keyEvent);
+                    window.dispatchEvent(keyEvent);
+                } catch (e) {}
+            };
+
+            // Fire initial nudge immediately
+            triggerScrollNudge();
+
+            let finished = false;
+            let observer = null;
+            let pollTimer = null;
+            let timeoutTimer = null;
+
+            const finish = (newPhotos) => {
+                if (finished) return;
+                finished = true;
+                if (observer) {
+                    observer.disconnect();
+                    observer = null;
+                }
+                if (pollTimer) {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                }
+                if (timeoutTimer) {
+                    clearTimeout(timeoutTimer);
+                    timeoutTimer = null;
+                }
+
+                this.showStreamLoadingIndicator(direction, false);
+                this.isLoadingMore = false;
+
+                if (newPhotos && newPhotos.length > 0) {
+                    let reallyAdded = 0;
+                    newPhotos.forEach(p => {
+                        if (!currentKeys.has(p.mediaKey)) {
+                            this.photos.push(p);
+                            currentKeys.add(p.mediaKey);
+                            reallyAdded++;
                         }
                     });
-                    log(`After scroll: added ${addedCount} more photos.`);
-                    this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-                    this.renderModalPhotos();
-                }, 600);
-            }
+
+                    if (reallyAdded > 0) {
+                        log(`[Auto-Scroll] Fetched and rendered ${reallyAdded} more ${direction} photos.`);
+                        this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+                        this.renderModalPhotos();
+                        if (onComplete) onComplete(reallyAdded);
+                        return;
+                    }
+                }
+
+                log(`[Auto-Scroll] No further ${direction} photos returned from Google Photos.`);
+                if (onComplete) onComplete(0);
+            };
+
+            const checkForNewCards = () => {
+                const freshCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR));
+                const newFound = [];
+                freshCards.forEach((el, i) => {
+                    const info = this.extractCardInfo(el, i);
+                    if (info && info.mediaKey && !currentKeys.has(info.mediaKey)) {
+                        newFound.push(info);
+                    }
+                });
+                if (newFound.length > 0) {
+                    finish(newFound);
+                    return true;
+                }
+                return false;
+            };
+
+            // 1. Observe DOM mutations for instant response when Google Photos renders new photo cards
+            observer = new MutationObserver(() => {
+                checkForNewCards();
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+
+            // 2. Periodic check and nudge every 350ms
+            pollTimer = setInterval(() => {
+                if (checkForNewCards()) return;
+                triggerScrollNudge();
+            }, 350);
+
+            // 3. Max safety timeout (5500ms)
+            timeoutTimer = setTimeout(() => {
+                checkForNewCards();
+                finish([]);
+            }, 5500);
         },
 
         // --- Step 8: Save Changes via Google Photos API / Batch Handler ---
@@ -1187,151 +1378,30 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             log(`SAVING CHANGES FOR ${this.modifiedTimestamps.size} MODIFIED PHOTOS`);
 
             if (this.modifiedTimestamps.size === 0) {
-                alert('Немає змінених дат для збереження. Перетягніть фотографії, щоб змінити їхній час.');
+                alert('No photo positions or timestamps were changed. Drag photos or move sliders to change their time.');
                 return;
             }
 
             this.showConfirmationModal();
         },
 
-        formatDateDiff: function (oldDate, newDate) {
-            const pad = (n) => String(n).padStart(2, '0');
-
-            const oY = oldDate.getFullYear();
-            const oM = oldDate.getMonth() + 1;
-            const oD = oldDate.getDate();
-            const oH = oldDate.getHours();
-            const oMin = oldDate.getMinutes();
-            const oS = oldDate.getSeconds();
-
-            const nY = newDate.getFullYear();
-            const nM = newDate.getMonth() + 1;
-            const nD = newDate.getDate();
-            const nH = newDate.getHours();
-            const nMin = newDate.getMinutes();
-            const nS = newDate.getSeconds();
-
-            const diffY = oY !== nY;
-            const diffM = oM !== nM;
-            const diffD = oD !== nD;
-            const diffH = oH !== nH;
-            const diffMin = oMin !== nMin;
-            const diffS = oS !== nS;
-
-            const wrapOld = (val, isDiff) => isDiff
-                ? `<strong style="font-weight: 800; color: #f28b82;">${val}</strong>`
-                : `<span style="color: #9aa0a6; font-weight: 400;">${val}</span>`;
-
-            const wrapNew = (val, isDiff) => isDiff
-                ? `<strong style="font-weight: 800; color: #8ab4f8;">${val}</strong>`
-                : `<span style="color: #9aa0a6; font-weight: 400;">${val}</span>`;
-
-            const oldStr = `${wrapOld(oY, diffY)}.${wrapOld(pad(oM), diffM)}.${wrapOld(pad(oD), diffD)} ${wrapOld(pad(oH), diffH)}:${wrapOld(pad(oMin), diffMin)}:${wrapOld(pad(oS), diffS)}`;
-            const newStr = `${wrapNew(nY, diffY)}.${wrapNew(pad(nM), diffM)}.${wrapNew(pad(nD), diffD)} ${wrapNew(pad(nH), diffH)}:${wrapNew(pad(nMin), diffMin)}:${wrapNew(pad(nS), diffS)}`;
-
-            return {
-                oldHtml: oldStr,
-                newHtml: newStr
-            };
-        },
-
         showConfirmationModal: function () {
-            // Remove any existing confirm dialog
             const existing = document.querySelector('.gp-confirm-dialog-overlay');
             if (existing) existing.remove();
 
+            const templates = window.TimTools.Modules.DragInTimeTemplates;
             const confirmOverlay = document.createElement('div');
             confirmOverlay.className = 'gp-confirm-dialog-overlay';
-            confirmOverlay.style.cssText = `
-                position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.75);
-                z-index: 1000002;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                backdrop-filter: blur(5px);
-                font-family: 'Google Sans', Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
-                animation: gpFadeIn 0.2s ease-out;
-            `;
+            confirmOverlay.innerHTML = templates.getConfirmModalHtml(this.modifiedTimestamps.size);
 
-            const dialog = document.createElement('div');
-            dialog.className = 'gp-confirm-dialog-box';
-            dialog.style.cssText = `
-                background: #202124;
-                color: #e8eaed;
-                width: 660px;
-                max-width: 95vw;
-                max-height: 85vh;
-                border-radius: 24px;
-                display: flex;
-                flex-direction: column;
-                box-shadow: 0 16px 48px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
-                overflow: hidden;
-            `;
+            const tbody = confirmOverlay.querySelector('.gp-confirm-table-body');
+            const errorBanner = confirmOverlay.querySelector('.gp-confirm-error-banner');
+            const cancelBtn = confirmOverlay.querySelector('.gp-confirm-cancel-btn');
+            const confirmBtn = confirmOverlay.querySelector('.gp-confirm-save-btn');
 
-            // 1. Header
-            const header = document.createElement('div');
-            header.style.cssText = `
-                padding: 24px 24px 16px 24px;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            `;
-            header.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                    <div style="background: rgba(138, 180, 248, 0.15); width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #8ab4f8; flex-shrink: 0;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 style="margin: 0; font-size: 18px; font-weight: 500; color: #ffffff;">Чи ви впевнені, що хочете змінити дати цих медіа?</h2>
-                        <div style="font-size: 13px; color: #9aa0a6; margin-top: 4px;">
-                            Буде оновлено <b>${this.modifiedTimestamps.size}</b> елемент(ів). Після підтвердження зміни буде надіслано в Google Photos, а сторінка автоматично перезавантажиться.
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // 2. Content
-            const content = document.createElement('div');
-            content.style.cssText = `
-                padding: 16px 24px;
-                overflow-y: auto;
-                max-height: 52vh;
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-            `;
-
-            const tableContainer = document.createElement('div');
-            tableContainer.style.cssText = `
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 12px;
-                background: #17181b;
-                overflow: hidden;
-            `;
-
-            const table = document.createElement('table');
-            table.style.cssText = `
-                width: 100%;
-                border-collapse: collapse;
-                text-align: left;
-            `;
-
-            table.innerHTML = `
-                <thead>
-                    <tr style="background: rgba(255, 255, 255, 0.04); border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
-                        <th style="padding: 10px 14px; font-size: 11px; font-weight: 600; color: #9aa0a6; text-transform: uppercase; letter-spacing: 0.5px; width: 68px;">Прев'ю</th>
-                        <th style="padding: 10px 14px; font-size: 11px; font-weight: 600; color: #9aa0a6; text-transform: uppercase; letter-spacing: 0.5px;">Стара дата та час ➔ Нові дата та час</th>
-                    </tr>
-                </thead>
-                <tbody class="gp-confirm-table-body"></tbody>
-            `;
-
-            const tbody = table.querySelector('.gp-confirm-table-body');
-
-            this.modifiedTimestamps.forEach(({ photo, oldDate, newDate }, key) => {
-                const diff = this.formatDateDiff(oldDate, newDate);
+            let rowIdx = 1;
+            this.modifiedTimestamps.forEach(({ photo, oldDate, newDate }) => {
+                const diff = templates.formatDateDiff(oldDate, newDate);
 
                 const row = document.createElement('tr');
                 row.style.cssText = `
@@ -1341,9 +1411,14 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 row.onmouseenter = () => { row.style.backgroundColor = 'rgba(255, 255, 255, 0.03)'; };
                 row.onmouseleave = () => { row.style.backgroundColor = 'transparent'; };
 
+                // Index # cell
+                const tdIndex = document.createElement('td');
+                tdIndex.style.cssText = `padding: 10px 12px; vertical-align: middle; text-align: center; color: #80868b; font-weight: 600; font-size: 13px; width: 36px;`;
+                tdIndex.textContent = String(rowIdx++);
+
                 // Thumbnail cell
                 const tdThumb = document.createElement('td');
-                tdThumb.style.cssText = `padding: 10px 14px; vertical-align: middle;`;
+                tdThumb.style.cssText = `padding: 10px 14px; vertical-align: middle; width: 68px;`;
 
                 const thumbBox = document.createElement('div');
                 thumbBox.style.cssText = `
@@ -1397,93 +1472,27 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
                 // Date comparison cell
                 const tdDates = document.createElement('td');
-                tdDates.style.cssText = `padding: 10px 14px; vertical-align: middle;`;
+                tdDates.style.cssText = `padding: 10px 16px; vertical-align: middle;`;
 
                 tdDates.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px 10px; font-family: 'Roboto Mono', monospace, sans-serif; font-size: 13px; display: inline-flex; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 6px 12px; font-family: 'Roboto Mono', monospace, sans-serif; font-size: 13px; display: inline-flex; align-items: center;">
                             ${diff.oldHtml}
                         </div>
-                        <span style="color: #8ab4f8; font-size: 14px; font-weight: bold; flex-shrink: 0;">➔</span>
-                        <div style="background: rgba(138, 180, 248, 0.08); border: 1px solid rgba(138, 180, 248, 0.25); border-radius: 6px; padding: 6px 10px; font-family: 'Roboto Mono', monospace, sans-serif; font-size: 13px; display: inline-flex; align-items: center;">
+                        <span style="color: #8ab4f8; font-size: 15px; font-weight: bold; flex-shrink: 0;">➔</span>
+                        <div style="background: rgba(138, 180, 248, 0.08); border: 1px solid rgba(138, 180, 248, 0.25); border-radius: 8px; padding: 6px 12px; font-family: 'Roboto Mono', monospace, sans-serif; font-size: 13px; display: inline-flex; align-items: center;">
                             ${diff.newHtml}
                         </div>
                     </div>
                 `;
 
+                row.appendChild(tdIndex);
                 row.appendChild(tdThumb);
                 row.appendChild(tdDates);
                 tbody.appendChild(row);
             });
 
-            tableContainer.appendChild(table);
-            content.appendChild(tableContainer);
-
-            // Error banner placeholder
-            const errorBanner = document.createElement('div');
-            errorBanner.className = 'gp-confirm-error-banner';
-            errorBanner.style.cssText = `
-                display: none;
-                margin-top: 10px;
-                padding: 10px 14px;
-                background: rgba(234, 67, 53, 0.15);
-                border: 1px solid rgba(234, 67, 53, 0.4);
-                border-radius: 8px;
-                color: #f28b82;
-                font-size: 13px;
-                line-height: 1.4;
-            `;
-            content.appendChild(errorBanner);
-
-            // 3. Footer
-            const footer = document.createElement('div');
-            footer.style.cssText = `
-                padding: 16px 24px;
-                display: flex;
-                align-items: center;
-                justify-content: flex-end;
-                gap: 12px;
-                border-top: 1px solid rgba(255, 255, 255, 0.1);
-                background: #202124;
-            `;
-
-            const cancelBtn = document.createElement('button');
-            cancelBtn.style.cssText = `
-                background: transparent;
-                color: #8ab4f8;
-                border: 1px solid #5f6368;
-                border-radius: 20px;
-                padding: 0 20px;
-                height: 36px;
-                font-size: 14px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: background-color 0.15s;
-            `;
-            cancelBtn.textContent = 'Скасувати';
-            cancelBtn.onmouseenter = () => { cancelBtn.style.backgroundColor = 'rgba(138, 180, 248, 0.08)'; };
-            cancelBtn.onmouseleave = () => { cancelBtn.style.backgroundColor = 'transparent'; };
-            cancelBtn.onclick = () => {
-                confirmOverlay.remove();
-            };
-
-            const confirmBtn = document.createElement('button');
-            confirmBtn.style.cssText = `
-                background-color: #8ab4f8;
-                color: #202124;
-                border: none;
-                border-radius: 20px;
-                padding: 0 24px;
-                height: 36px;
-                font-size: 14px;
-                font-weight: 600;
-                cursor: pointer;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-                transition: background-color 0.15s, box-shadow 0.15s;
-            `;
-            confirmBtn.textContent = 'Підтвердити';
-            confirmBtn.onmouseenter = () => { confirmBtn.style.backgroundColor = '#aecbfa'; };
-            confirmBtn.onmouseleave = () => { confirmBtn.style.backgroundColor = '#8ab4f8'; };
+            cancelBtn.onclick = () => confirmOverlay.remove();
 
             confirmBtn.onclick = async () => {
                 confirmBtn.disabled = true;
@@ -1491,14 +1500,14 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 confirmBtn.style.opacity = '0.7';
                 cancelBtn.style.opacity = '0.5';
                 confirmBtn.style.cursor = 'not-allowed';
-                confirmBtn.textContent = 'Збереження в Google Photos...';
+                confirmBtn.textContent = 'Saving to Google Photos...';
                 errorBanner.style.display = 'none';
 
                 try {
                     await this.applyBatchDateChanges(this.modifiedTimestamps);
 
                     confirmBtn.style.backgroundColor = '#81c995';
-                    confirmBtn.textContent = '✓ Збережено! Оновлюємо сторінку...';
+                    confirmBtn.textContent = '✓ Saved! Reloading page...';
                     log('Date update successfully applied. Reloading page in 800ms...');
 
                     setTimeout(() => {
@@ -1511,22 +1520,13 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     confirmBtn.style.opacity = '1';
                     cancelBtn.style.opacity = '1';
                     confirmBtn.style.cursor = 'pointer';
-                    confirmBtn.textContent = 'Спробувати знову';
+                    confirmBtn.textContent = 'Try again';
 
-                    errorBanner.textContent = `Помилка збереження: ${err.message || err}`;
+                    errorBanner.textContent = `Error saving changes: ${err.message || err}`;
                     errorBanner.style.display = 'block';
                 }
             };
 
-            footer.appendChild(cancelBtn);
-            footer.appendChild(confirmBtn);
-
-            dialog.appendChild(header);
-            dialog.appendChild(content);
-            dialog.appendChild(footer);
-            confirmOverlay.appendChild(dialog);
-
-            // Backdrop click closes dialog if not busy
             confirmOverlay.addEventListener('click', (e) => {
                 if (e.target === confirmOverlay && !confirmBtn.disabled) {
                     confirmOverlay.remove();

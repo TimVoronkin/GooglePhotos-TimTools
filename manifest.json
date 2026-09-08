@@ -28,16 +28,26 @@
         "src/content/modules/kml_export/extractor.js",
         "src/content/modules/kml_export/generator.js",
         "src/content/modules/kml_export/main.js",
+        "src/content/modules/drag_in_time/templates/modal.js",
+        "src/content/modules/drag_in_time/templates/card.js",
+        "src/content/modules/drag_in_time/templates/confirm_dialog.js",
         "src/content/modules/drag_in_time.js",
         "src/content/main.js"
       ],
-      "css": ["src/content/styles.css"],
+      "css": [
+        "src/content/styles.css",
+        "src/content/modules/drag_in_time/styles.css"
+      ],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["assets/active/*", "src/options/options.html"],
+      "resources": [
+        "assets/active/*",
+        "src/options/options.html",
+        "src/content/modules/drag_in_time/templates/*"
+      ],
       "matches": ["*://photos.google.com/*"]
     }
   ]
