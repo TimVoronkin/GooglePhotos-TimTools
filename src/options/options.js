@@ -6,6 +6,7 @@ const kmlFolderName = document.getElementById('kmlFolderName');
 const kmlFilePrefix = document.getElementById('kmlFilePrefix');
 const enableKmlExport = document.getElementById('enableKmlExport');
 const enableDragInTime = document.getElementById('enableDragInTime');
+const enableSmartArchiving = document.getElementById('enableSmartArchiving');
 const kmlSection = document.getElementById('kml-section');
 const folderInputWrapper = document.getElementById('folderInputWrapper');
 const enableUpButton = document.getElementById('enableUpButton');
@@ -21,6 +22,7 @@ const allInputs = [
     kmlFilePrefix,
     enableKmlExport,
     enableDragInTime,
+    enableSmartArchiving,
     enableUpButton,
     enableDateSearch,
     enableDeleteShortcut,
@@ -61,6 +63,7 @@ function restoreOptions() {
         enableDeleteShortcut.checked = items.enableDeleteShortcut;
         enableKmlExport.checked = items.enableKmlExport;
         if (enableDragInTime) enableDragInTime.checked = items.enableDragInTime !== false;
+        if (enableSmartArchiving) enableSmartArchiving.checked = items.enableSmartArchiving !== false;
 
         kmlCreateSubfolder.checked = items.kmlCreateSubfolder !== false;
         kmlFolderName.value = items.kmlFolderName;
@@ -121,6 +124,7 @@ function saveOptions() {
         enableDeleteShortcut: enableDeleteShortcut.checked,
         enableKmlExport: enableKmlExport.checked,
         enableDragInTime: enableDragInTime ? enableDragInTime.checked : true,
+        enableSmartArchiving: enableSmartArchiving ? enableSmartArchiving.checked : true,
         kmlCreateSubfolder: kmlCreateSubfolder.checked,
         kmlFolderName: kmlFolderName.value,
         kmlFilePrefix: kmlFilePrefix.value

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Google Photos Tim Tools",
-  "version": "0.4",
-  "description": "Combined tools for Google Photos: Up Button, Date Search, Delete Shortcut & KML Export",
+  "version": "0.5",
+  "description": "Combined tools for Google Photos: Up Button, Date Search, Delete Shortcut, KML Export, Drag in Time & Smart Archiving",
   "icons": {
     "128": "assets/active/logo-128.png"
   },
@@ -32,11 +32,13 @@
         "src/content/modules/drag_in_time/templates/card.js",
         "src/content/modules/drag_in_time/templates/confirm_dialog.js",
         "src/content/modules/drag_in_time.js",
+        "src/content/modules/smart_archiving/smart_archiving.js",
         "src/content/main.js"
       ],
       "css": [
         "src/content/styles.css",
-        "src/content/modules/drag_in_time/styles.css"
+        "src/content/modules/drag_in_time/styles.css",
+        "src/content/modules/smart_archiving/smart_archiving.css"
       ],
       "run_at": "document_idle"
     }

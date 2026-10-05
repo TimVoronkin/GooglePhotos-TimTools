@@ -59,5 +59,14 @@ window.TimTools = window.TimTools || {};
                 console.error('[GP-TimTools] Drag in Time module missing!');
             }
         }
+
+        if (settings.enableSmartArchiving) {
+            if (Modules.SmartArchiving) {
+                Modules.SmartArchiving.init();
+                console.log('[GP-TimTools] Smart Archiving module loaded.');
+            } else {
+                console.error('[GP-TimTools] Smart Archiving module missing!');
+            }
+        }
     }
 })();

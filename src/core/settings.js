@@ -8,6 +8,8 @@ window.TimTools = window.TimTools || {};
         enableDeleteShortcut: true,
         enableKmlExport: true,
         enableDragInTime: true,
+        enableSmartArchiving: true,
+        smartArchivingFilters: [],
         kmlCreateSubfolder: true,
         kmlFolderName: "GooglePhotosExports",
         kmlFilePrefix: "MyExport_"
