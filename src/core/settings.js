@@ -12,7 +12,11 @@ window.TimTools = window.TimTools || {};
         smartArchivingFilters: [],
         kmlCreateSubfolder: true,
         kmlFolderName: "GooglePhotosExports",
-        kmlFilePrefix: "MyExport_"
+        kmlFilePrefix: "MyExport_",
+        appTheme: "dark",
+        enableCustomIconColors: false,
+        customIconColorDark: "#0B57D0",
+        customIconColorLight: "#A8C7FA"
     };
 
     window.TimTools.Settings = {

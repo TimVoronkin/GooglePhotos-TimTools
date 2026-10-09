@@ -16,14 +16,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #444746; /* GP Icon Color */
+    color: var(--gp-active-accent, #1a73e8);
     transition: background-color 0.15s;
     outline: none;
 }
 
 .gp-kml-export-btn:hover {
-    background-color: rgba(68, 71, 70, 0.08); /* GP Hover Color */
-    color: #1f1f1f;
+    background-color: rgba(128, 128, 128, 0.16);
 }
 
 .gp-kml-export-btn svg {

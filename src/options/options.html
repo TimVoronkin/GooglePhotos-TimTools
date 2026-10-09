@@ -1,129 +1,254 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Settings - Tim Tools for Google Photos</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Google Photos Tim Tools</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
     <div class="container">
-        <h1><img src="../../assets/active/logo-128.png" alt="Icon" style="width: 32px; height: 32px;"> Google Photos Tim
-            Tools - Settings</h1>
-
-        <div class="section">
-            <div class="section-header">
-                <h2>Up Button</h2>
-                <div class="option-row">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="enableUpButton">
-                        <span class="slider"></span>
-                        <span class="label-text">Enable</span>
-                    </label>
-                    <img src="../../assets/active/up-button.svg" class="option-icon" title="Up Button Icon">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <img src="../../assets/active/logo-128.png" alt="Tim Tools Logo" class="app-logo">
+                <div class="title-wrapper">
+                    <h1>Google Photos Tim Tools</h1>
+                    <span class="version-tag">v0.6</span>
                 </div>
             </div>
-
-            <div class="sub-section" id="up-button-sub-section">
-                <h3>Up Button Configuration</h3>
-                <div class="option-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="upButtonClosePhoto">
-                        Auto-close photo and return to timeline grid
-                    </label>
-                </div>
+            <div class="status-indicator" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span class="status-text" id="statusText">Saved</span>
             </div>
+        </header>
 
-            <div class="section-header">
-                <h2>Date Search</h2>
-                <div class="option-row">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="enableDateSearch">
-                        <span class="slider"></span>
-                        <span class="label-text">Enable</span>
-                    </label>
-                    <img src="../../assets/active/calendar-icon.svg" class="option-icon" title="Calendar Icon">
-                </div>
-            </div>
+        <main class="feature-list">
 
-            <div class="section-header">
-                <h2>Delete Shortcut</h2>
-                <div class="option-row">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="enableDeleteShortcut">
-                        <span class="slider"></span>
-                        <span class="label-text">Enable</span>
-                    </label>
-                    <svg class="option-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: #e8eaed; opacity: 0.8;">
-                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                    </svg>
-                </div>
-            </div>
-
-            <div class="section-header">
-                <h2>KML Export</h2>
-                <div class="option-row">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="enableKmlExport">
-                        <span class="slider"></span>
-                        <span class="label-text">Enable</span>
-                    </label>
-                    <img src="../../assets/active/kml-export-icon.svg" class="option-icon" title="KML Icon">
-                </div>
-            </div>
-            
-            <div class="sub-section" id="kml-section">
-                <h3>Export Configuration</h3>
-
-                <div class="option-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="kmlCreateSubfolder">
-                        Create subfolder
-                    </label>
-                </div>
-
-                <!-- Unified Path Preview and Input -->
-                <div class="path-config-container">
-                    <span class="path-segment">\Downloads\</span>
-
-                    <div class="input-wrapper" id="folderInputWrapper">
-                        <input type="text" id="kmlFolderName" placeholder="Folder" class="inline-input">
-                        <span class="path-separator">\</span>
+            <!-- 1. Drag in Time -->
+            <section class="feature-card" id="card-dragInTime">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="card-icon-wrapper" aria-hidden="true">
+                            <span class="card-icon icon-drag-pan"></span>
+                        </div>
+                        <h2 class="card-title">Drag in Time</h2>
                     </div>
-
-                    <input type="text" id="kmlFilePrefix" placeholder="Prefix_" class="inline-input">
-                    <span class="path-segment">YYYY-MM-DD.kml</span>
-                </div>
-            </div>
-
-            <div class="section-header">
-                <h2>Drag in Time</h2>
-                <div class="option-row">
                     <label class="toggle-switch">
                         <input type="checkbox" id="enableDragInTime">
                         <span class="slider"></span>
-                        <span class="label-text">Enable</span>
                     </label>
-                    <img src="../../assets/active/drag-pan.svg" class="option-icon" title="Drag in Time Icon">
                 </div>
-            </div>
+                <p class="card-description">
+                    It allows you to select photos and, using an interactive window, drag and swap them in the timeline, and then confirm to save the desired time.
+                </p>
+            </section>
 
-            <div class="section-header">
-                <h2>Smart Archiving</h2>
-                <div class="option-row">
+            <!-- 2. Smart Archiving -->
+            <section class="feature-card" id="card-smartArchiving">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="card-icon-wrapper" aria-hidden="true">
+                            <span class="card-icon icon-filter"></span>
+                        </div>
+                        <h2 class="card-title">Smart Archiving</h2>
+                    </div>
                     <label class="toggle-switch">
                         <input type="checkbox" id="enableSmartArchiving">
                         <span class="slider"></span>
-                        <span class="label-text">Enable</span>
                     </label>
-                    <img src="../../assets/active/filter_icon.svg" class="option-icon" title="Smart Archiving Icon">
                 </div>
-            </div>
+                <p class="card-description">
+                    Keep your main timeline clutter-free by auto-archiving photos from selected albums (like a custom filters) with one-click toggles.
+                </p>
+            </section>
 
+            <!-- 3. KML Geotag Export -->
+            <section class="feature-card" id="card-kmlExport">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="card-icon-wrapper" aria-hidden="true">
+                            <span class="card-icon icon-kml-export"></span>
+                        </div>
+                        <h2 class="card-title">KML Geotag Export</h2>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableKmlExport">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-description">
+                    It goes through all the selected photos and extracts from it GPS coordinates and timestamps and then exports them into a KML file for Google Earth.
+                </p>
 
-        </div>
+                <!-- Nested Sub-settings for KML Export -->
+                <div class="nested-settings" id="kml-section">
+                    <div class="nested-row">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="kmlCreateSubfolder">
+                            <span class="checkbox-box"></span>
+                            <span class="checkbox-text">Create subfolder in Downloads</span>
+                        </label>
+                    </div>
 
+                    <div class="path-preview-box">
+                        <span class="path-segment">\Downloads\</span>
+                        <div class="input-wrapper" id="folderInputWrapper">
+                            <input type="text" id="kmlFolderName" placeholder="Folder" class="inline-path-input">
+                            <span class="path-separator">\</span>
+                        </div>
+                        <input type="text" id="kmlFilePrefix" placeholder="Prefix_" class="inline-path-input">
+                        <span class="path-segment">YYYY-MM-DD.kml</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. Date Search & Picker -->
+            <section class="feature-card" id="card-dateSearch">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="card-icon-wrapper" aria-hidden="true">
+                            <span class="card-icon icon-calendar"></span>
+                        </div>
+                        <h2 class="card-title">Date Search & Picker</h2>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableDateSearch">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-description">
+                    Adds a calendar button to the search bar and recognizes typed dates (e.g., "15 May" or "15.05.2023") to instantly jump to that date in your library.
+                </p>
+            </section>
+
+            <!-- 5. Up Navigation Button -->
+            <section class="feature-card" id="card-upButton">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="card-icon-wrapper" aria-hidden="true">
+                            <span class="card-icon icon-arrow-upward"></span>
+                        </div>
+                        <h2 class="card-title">Up Navigation Button</h2>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableUpButton">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-description">
+                    Adds an "Up" button in the photo viewer to jump straight back to the album or timeline grid without losing your scroll position.
+                </p>
+
+                <!-- Nested Sub-settings for Up Button -->
+                <div class="nested-settings" id="up-button-sub-section">
+                    <div class="nested-row">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="upButtonClosePhoto">
+                            <span class="checkbox-box"></span>
+                            <span class="checkbox-text">Auto-close photo and return to timeline grid</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. Delete Shortcut -->
+            <section class="feature-card" id="card-deleteShortcut">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="card-icon-wrapper" aria-hidden="true">
+                            <span class="card-icon icon-trash"></span>
+                        </div>
+                        <h2 class="card-title">Delete Shortcut</h2>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableDeleteShortcut">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-description">
+                    Press the physical Delete key while viewing a photo to open delete menu and then press Enter to confirm.
+                </p>
+            </section>
+
+            <!-- 7. Theme & Accent Colors -->
+            <section class="feature-card" id="card-themeAndColors">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="card-icon-wrapper" aria-hidden="true">
+                            <span class="card-icon icon-palette"></span>
+                        </div>
+                        <h2 class="card-title">Theme & Accent Colors</h2>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Set the theme to match your Appearance setting in Google Photos (<a href="https://photos.google.com/settings" target="_blank" style="color: inherit; text-decoration: underline;">photos.google.com/settings</a> under <b>Appearance</b>). TimTools icons and dialogs will adapt accordingly.
+                </p>
+
+                <!-- Theme Selection Toggle Group -->
+                <div class="theme-selector-container">
+                    <div class="theme-options-group" role="radiogroup" aria-label="Google Photos Theme">
+                        <label class="theme-option-card">
+                            <input type="radio" name="appTheme" value="dark" id="themeRadioDark">
+                            <div class="theme-card-content">
+                                <svg class="theme-card-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
+                                </svg>
+                                <span class="theme-card-title">Dark theme</span>
+                            </div>
+                        </label>
+                        <label class="theme-option-card">
+                            <input type="radio" name="appTheme" value="light" id="themeRadioLight">
+                            <div class="theme-card-content">
+                                <svg class="theme-card-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>
+                                </svg>
+                                <span class="theme-card-title">Light theme</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Divider & Override Accent Colors Toggle -->
+                <div class="override-colors-divider"></div>
+                <div class="override-colors-header">
+                    <div class="override-title-group">
+                        <span class="override-title">Override Accent Colors</span>
+                        <span class="override-subtext">Use custom colors instead of standard Google Photos accents</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableCustomIconColors">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <!-- Nested Sub-settings for Custom Colors -->
+                <div class="nested-settings" id="custom-colors-sub-section">
+                    <div class="color-picker-grid">
+                        <div class="color-picker-item">
+                            <span class="color-picker-label">Dark accent color</span>
+                            <div class="color-input-group">
+                                <input type="color" id="customIconColorDarkPicker" class="color-preview-btn">
+                                <input type="text" id="customIconColorDarkHex" class="color-hex-input" maxlength="7" placeholder="#0B57D0">
+                            </div>
+                        </div>
+
+                        <div class="color-picker-item">
+                            <span class="color-picker-label">Light accent color</span>
+                            <div class="color-input-group">
+                                <input type="color" id="customIconColorLightPicker" class="color-preview-btn">
+                                <input type="text" id="customIconColorLightHex" class="color-hex-input" maxlength="7" placeholder="#A8C7FA">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
     </div>
+
     <script src="../core/settings.js"></script>
     <script src="options.js"></script>
 </body>

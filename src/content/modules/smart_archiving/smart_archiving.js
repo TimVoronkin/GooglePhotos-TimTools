@@ -59,7 +59,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 this.performAutoCheck();
             }, 3500);
 
-            // Close popover on document click outside or Escape
+
             document.addEventListener('click', (e) => {
                 if (!this.isOpen) return;
                 const isBtn = this.buttonEl && this.buttonEl.contains(e.target);
@@ -681,6 +681,16 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 });
                 document.body.appendChild(popover);
                 this.popoverEl = popover;
+            }
+
+            const isDark = window.TimTools.Theme ? window.TimTools.Theme.isDark() : false;
+
+            if (isDark) {
+                this.popoverEl.classList.add('gp-theme-dark', 'gp-timtools-theme-dark');
+                this.popoverEl.classList.remove('gp-theme-light', 'gp-timtools-theme-light');
+            } else {
+                this.popoverEl.classList.add('gp-theme-light', 'gp-timtools-theme-light');
+                this.popoverEl.classList.remove('gp-theme-dark', 'gp-timtools-theme-dark');
             }
 
             // Clear previous inner contents without recreating the element

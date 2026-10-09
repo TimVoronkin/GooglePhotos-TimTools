@@ -21,23 +21,22 @@
     transition: background-color 0.2s ease, transform 0.1s ease;
     outline: none;
     padding: 0;
-    margin: 0 4px;
-    color: #e8eaed;
+    color: var(--gp-active-accent, #1a73e8);
 }
 
 .gp-smart-archive-btn:hover {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: rgba(128, 128, 128, 0.16);
 }
 
 .gp-smart-archive-btn:active {
-    background-color: rgba(255, 255, 255, 0.16);
+    background-color: rgba(128, 128, 128, 0.24);
     transform: scale(0.95);
 }
 
 .gp-smart-archive-btn svg {
     width: 24px;
     height: 24px;
-    fill: #e8eaed;
+    fill: currentColor;
     display: block;
 }
 
@@ -522,6 +521,131 @@
     line-height: 1.4;
     color: #9aa0a6;
     margin-top: 6px;
+}
+
+/* --- Light Theme Overrides for Smart Archiving Popover --- */
+.gp-smart-archive-popover.gp-theme-light {
+    background-color: #ffffff;
+    border: 1px solid #dadce0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.12);
+    color: #202124;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-header {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-title {
+    color: #202124;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-badge {
+    background: #f1f3f4;
+    color: #5f6368;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-col-headers {
+    color: #5f6368;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-item:hover,
+.gp-smart-archive-popover.gp-theme-light .gp-sa-edit-item:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-item-title,
+.gp-smart-archive-popover.gp-theme-light .gp-sa-edit-title,
+.gp-smart-archive-popover.gp-theme-light .gp-sa-auto-summary-text {
+    color: #202124;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-item-sub,
+.gp-smart-archive-popover.gp-theme-light .gp-sa-edit-count,
+.gp-smart-archive-popover.gp-theme-light .gp-sa-auto-summary-sub,
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-empty,
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-loading,
+.gp-smart-archive-popover.gp-theme-light .gp-sa-progress-text {
+    color: #5f6368;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-actions {
+    border-top: 1px solid #e0e0e0;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-sa-btn-cancel {
+    color: #5f6368;
+    border: 1px solid #dadce0;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-sa-btn-cancel:hover {
+    background-color: #f1f3f4;
+    color: #202124;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-sa-btn-icon {
+    border: 1px solid #dadce0;
+    color: #3c4043;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-sa-btn-icon svg {
+    fill: #3c4043;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-sa-btn-icon:hover {
+    background-color: #f1f3f4;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-sa-edit-search {
+    background-color: #f1f3f4;
+    border: 1px solid #dadce0;
+    color: #202124;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-smart-archive-list::-webkit-scrollbar-thumb {
+    background: #dadce0;
+}
+
+/* --- High Contrast Toggle Switch Knob & Icon Rules --- */
+.gp-smart-archive-popover.gp-theme-light .gp-sa-slider {
+    background-color: #dadce0 !important;
+}
+
+.gp-smart-archive-popover.gp-theme-dark .gp-sa-slider {
+    background-color: #3c4043 !important;
+}
+
+.gp-sa-knob {
+    background-color: #ffffff !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* OFF state icon inside knob: ALWAYS DARK fill (#202124) for high contrast on light knob */
+.gp-sa-icon-off svg,
+.gp-sa-icon-off svg path {
+    fill: #202124 !important;
+    color: #202124 !important;
+}
+
+/* ON state: knob background in dark theme vs light theme */
+.gp-smart-archive-popover.gp-theme-dark .gp-sa-toggle input:checked + .gp-sa-slider .gp-sa-knob {
+    background-color: #202124 !important;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-sa-toggle input:checked + .gp-sa-slider .gp-sa-knob {
+    background-color: #ffffff !important;
+}
+
+/* ON state icon inside knob */
+.gp-smart-archive-popover.gp-theme-dark .gp-sa-toggle input:checked + .gp-sa-slider .gp-sa-icon-on svg,
+.gp-smart-archive-popover.gp-theme-dark .gp-sa-toggle input:checked + .gp-sa-slider .gp-sa-icon-on svg path {
+    fill: var(--gp-active-accent, #8ab4f8) !important;
+    color: var(--gp-active-accent, #8ab4f8) !important;
+}
+
+.gp-smart-archive-popover.gp-theme-light .gp-sa-toggle input:checked + .gp-sa-slider .gp-sa-icon-on svg,
+.gp-smart-archive-popover.gp-theme-light .gp-sa-toggle input:checked + .gp-sa-slider .gp-sa-icon-on svg path {
+    fill: var(--gp-active-accent, #1a73e8) !important;
+    color: var(--gp-active-accent, #1a73e8) !important;
 }
 
 

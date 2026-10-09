@@ -4,7 +4,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 (function () {
     const CONTAINER_SELECTOR = '.Aul2T.m6aMje';
     const INPUT_SELECTOR = 'input.Ax4B8.ZAGvjd, textarea.Ax4B8.ZAGvjd';
-    const ICON_URL = chrome.runtime.getURL('assets/active/calendar-icon.svg');
+    const SVG_CALENDAR_ICON = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-188.5-11.5Q280-423 280-440t11.5-28.5Q303-480 320-480t28.5 11.5Q360-457 360-440t-11.5 28.5Q337-400 320-400t-28.5-11.5ZM640-400q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-188.5-11.5Q280-263 280-280t11.5-28.5Q303-320 320-320t28.5 11.5Q360-297 360-280t-11.5 28.5Q337-240 320-240t-28.5-11.5ZM640-240q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z"/></svg>`;
 
     const MONTH_NAMES = {
         'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
@@ -112,7 +112,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 .dp-year-item:hover { background-color: rgba(255, 255, 255, 0.08); }
                 .dp-year-item.current { border: 1px solid #8ab4f8; box-sizing: border-box; }
                 .dp-year-item.selected { background-color: #424548; } 
-             `;
+            `;
             document.head.appendChild(style);
 
             let currentMonth = new Date().getMonth();
@@ -274,15 +274,16 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             btn.style.cursor = 'pointer';
             btn.style.display = 'flex';
             btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'center';
             btn.style.marginRight = '16px';
+            btn.style.opacity = '0.75';
+            btn.style.transition = 'opacity 0.2s';
+            btn.setAttribute('title', 'Date Search');
 
-            const img = document.createElement('img');
-            img.src = ICON_URL;
-            img.style.width = '24px';
-            img.style.height = '24px';
-            img.style.opacity = '0.7';
+            btn.onmouseenter = () => btn.style.opacity = '1';
+            btn.onmouseleave = () => btn.style.opacity = '0.75';
 
-            btn.appendChild(img);
+            btn.innerHTML = SVG_CALENDAR_ICON;
             btn.onclick = (e) => this.onBtnClick(e);
 
             container.appendChild(btn);

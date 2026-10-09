@@ -64,8 +64,8 @@ window.TimTools.Modules.DragInTimeTemplates.getModalOverlayHtml = function () {
             <div class="gp-drag-modal-footer">
                 <div class="gp-modal-status-info">
                     <span class="gp-count-loaded">0 photos loaded</span>
-                    <span class="gp-selected-badge" style="display: none; background: rgba(138, 180, 248, 0.15); color: #8ab4f8; padding: 2px 8px; border-radius: 10px; font-weight: 500; font-size: 11px;">0 selected</span>
-                    <span class="gp-modified-badge" style="display: none; background: rgba(138, 180, 248, 0.2); color: #8ab4f8; padding: 2px 8px; border-radius: 10px; font-weight: 500; font-size: 11px;">0 modified</span>
+                    <span class="gp-selected-badge" style="display: none; padding: 2px 8px; border-radius: 10px; font-weight: 500; font-size: 11px;">0 selected</span>
+                    <span class="gp-modified-badge" style="display: none; padding: 2px 8px; border-radius: 10px; font-weight: 500; font-size: 11px;">0 modified</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <button class="gp-modal-back-btn">Cancel</button>

@@ -720,3 +720,160 @@
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
     overflow: hidden;
 }
+
+/* --- Light Theme Overrides for Drag in Time Modal & Confirm Dialog --- */
+.gp-theme-light .gp-drag-modal-dialog,
+.gp-theme-light .gp-confirm-dialog-box {
+    background: #ffffff;
+    color: #202124;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.gp-theme-light .gp-drag-modal-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.gp-theme-light .gp-header-title {
+    color: #202124;
+}
+
+.gp-theme-light .gp-header-subtitle {
+    color: #5f6368;
+}
+
+.gp-theme-light .gp-header-checkbox-label {
+    color: #202124;
+    background: #f1f3f4;
+    border: 1px solid #dadce0;
+}
+
+.gp-theme-light .gp-header-checkbox-label:hover {
+    background: #e8eaed;
+    border-color: #bdc1c6;
+}
+
+.gp-theme-light .gp-checkbox-text {
+    color: #202124 !important;
+}
+
+.gp-theme-light .gp-modal-close-btn {
+    color: #5f6368;
+}
+
+.gp-theme-light .gp-modal-close-btn:hover {
+    background: #f1f3f4;
+    color: #202124;
+}
+
+.gp-theme-light .gp-drag-modal-body {
+    background: #f8f9fa;
+}
+
+.gp-theme-light .gp-date-group-header {
+    color: #3c4043;
+}
+
+.gp-theme-light .gp-date-group-count {
+    color: #70757a;
+}
+
+.gp-theme-light .gp-modal-photo-card {
+    background: #e8eaed;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.gp-theme-light .gp-card-fallback-img {
+    background: #e8eaed;
+    color: #70757a;
+}
+
+.gp-theme-light .gp-load-btn {
+    background: #ffffff;
+    border: 1px dashed #1a73e8;
+    color: #1a73e8;
+}
+
+.gp-theme-light .gp-load-btn:hover {
+    background: #e8f0fe;
+}
+
+.gp-theme-light .gp-drag-modal-footer {
+    background: #ffffff;
+    border-top: 1px solid #e0e0e0;
+}
+
+.gp-theme-light .gp-modal-status-info {
+    color: #5f6368;
+}
+
+.gp-theme-light .gp-confirm-dialog-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.gp-theme-light .gp-confirm-title {
+    color: #202124;
+}
+
+.gp-theme-light .gp-confirm-dialog-body {
+    background: #f8f9fa;
+}
+
+.gp-theme-light .gp-confirm-table-header {
+    background: #f1f3f4;
+    color: #3c4043;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.gp-theme-light .gp-confirm-table-row {
+    border-bottom: 1px solid #e0e0e0;
+    color: #202124;
+}
+
+.gp-theme-light .gp-confirm-table-row:hover {
+    background: #f1f3f4;
+}
+
+.gp-theme-light .gp-confirm-dialog-footer {
+    background: #ffffff;
+    border-top: 1px solid #e0e0e0;
+}
+
+.gp-theme-light .gp-confirm-subtitle {
+    color: #5f6368;
+}
+
+.gp-theme-light .gp-confirm-table-card {
+    background: #ffffff;
+    border: 1px solid #dadce0;
+}
+
+.gp-theme-light .gp-confirm-table-head-row {
+    background: #f1f3f4;
+    border-bottom: 1px solid #dadce0;
+}
+
+.gp-theme-light .gp-confirm-table-head-row th {
+    color: #5f6368;
+}
+
+.gp-theme-light .gp-confirm-icon-box {
+    background: rgba(26, 115, 232, 0.12);
+    color: #1a73e8;
+}
+
+.gp-theme-light .gp-confirm-icon-box svg {
+    color: #1a73e8;
+    fill: #1a73e8;
+}
+
+.gp-theme-dark .gp-confirm-icon-box {
+    background: rgba(138, 180, 248, 0.15);
+    color: #8ab4f8;
+}
+
+.gp-theme-dark .gp-confirm-icon-box svg {
+    color: #8ab4f8;
+    fill: #8ab4f8;
+}

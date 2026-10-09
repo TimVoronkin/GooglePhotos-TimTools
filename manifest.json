@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Google Photos Tim Tools",
-  "version": "0.5",
+  "version": "0.6",
   "description": "Combined tools for Google Photos: Up Button, Date Search, Delete Shortcut, KML Export, Drag in Time & Smart Archiving",
   "icons": {
     "128": "assets/active/logo-128.png"
@@ -21,6 +21,7 @@
       "js": [
         "src/core/settings.js",
         "src/core/dom_utils.js",
+        "src/core/theme.js",
         "src/content/modules/up_button.js",
         "src/content/modules/date_search.js",
         "src/content/modules/delete_shortcut.js",

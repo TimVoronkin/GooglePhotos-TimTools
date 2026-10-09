@@ -98,7 +98,8 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             newOption.style.cursor = 'pointer';
             newOption.style.transition = 'background-color 0.15s ease';
             newOption.addEventListener('mouseenter', () => {
-                newOption.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                const isDarkTheme = window.TimTools.Theme ? window.TimTools.Theme.isDark() : false;
+                newOption.style.backgroundColor = isDarkTheme ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
             });
             newOption.addEventListener('mouseleave', () => {
                 newOption.style.backgroundColor = 'transparent';
@@ -619,6 +620,10 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const templates = window.TimTools.Modules.DragInTimeTemplates;
             const overlay = document.createElement('div');
             overlay.className = 'gp-drag-modal-overlay';
+
+            const isDark = window.TimTools.Theme ? window.TimTools.Theme.isDark() : false;
+            overlay.classList.add(isDark ? 'gp-theme-dark' : 'gp-theme-light', isDark ? 'gp-timtools-theme-dark' : 'gp-timtools-theme-light');
+
             overlay.innerHTML = templates.getModalOverlayHtml();
 
             // Prevent background page from receiving mousewheel events outside modalBody
@@ -1600,6 +1605,10 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const templates = window.TimTools.Modules.DragInTimeTemplates;
             const confirmOverlay = document.createElement('div');
             confirmOverlay.className = 'gp-confirm-dialog-overlay';
+
+            const isDark = window.TimTools.Theme ? window.TimTools.Theme.isDark() : false;
+            confirmOverlay.classList.add(isDark ? 'gp-theme-dark' : 'gp-theme-light', isDark ? 'gp-timtools-theme-dark' : 'gp-timtools-theme-light');
+
             confirmOverlay.innerHTML = templates.getConfirmModalHtml(this.modifiedTimestamps.size);
 
             const tbody = confirmOverlay.querySelector('.gp-confirm-table-body');

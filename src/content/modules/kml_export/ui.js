@@ -4,9 +4,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
 (function () {
     // Selectors
-    // 'div[jscontroller="MHDZYd"]' is the container for action buttons (Share, Add to album, etc.) when photos are selected.
     const TOOLBAR_ACTIONS_SELECTOR = 'div[jscontroller="MHDZYd"]';
-    // Fallback: The main floating toolbar container.
     const TOOLBAR_SELECTOR = '.c9yG5b.txMZRd';
 
     const UI = {
@@ -30,7 +28,6 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
             render: function (current, total, startTime, status) {
                 let existing = document.getElementById('gp-processing-popup');
-                const stopIcon = chrome.runtime.getURL('assets/active/stop-icon.svg');
                 const percent = total > 0 ? (current / total) * 100 : 0;
 
                 let timeDetails = "Calculating...";
@@ -74,7 +71,11 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                         <div id="gp-msg-status" style="font-size: 12px; opacity: 0.9;"></div>
                         <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0;">
                             <span id="gp-msg-count"></span>
-                            <img id="gp-stop-btn" src="${stopIcon}" style="width: 20px; height: 20px; cursor: pointer; opacity: 0.8; transition: opacity 0.2s;" title="Stop Processing">
+                            <span id="gp-stop-btn" style="cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0.85; transition: opacity 0.2s;" title="Stop Processing">
+                                <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#ea868f">
+                                    <path d="M320-320h320v-320H320v320ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
+                                </svg>
+                            </span>
                         </div>
                         <div id="gp-msg-time" style="font-size: 11px; opacity: 0.7; font-family: monospace;"></div>
                         <div style="width: 100%; background: #555; height: 4px; border-radius: 2px; overflow: hidden; margin-top: 4px;">
@@ -86,12 +87,11 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                     const btn = document.getElementById('gp-stop-btn');
                     if (btn) {
                         btn.onclick = () => {
-                            // Dispatch custom event for controller to handle
                             const event = new CustomEvent('gp-stop-processing');
                             document.dispatchEvent(event);
                         };
                         btn.onmouseover = () => btn.style.opacity = "1";
-                        btn.onmouseout = () => btn.style.opacity = "0.8";
+                        btn.onmouseout = () => btn.style.opacity = "0.85";
                     }
                 }
 
@@ -122,31 +122,23 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
         },
 
         injectButton: function (callback) {
-            // Check if button already exists
             if (document.querySelector('.gp-kml-export-container')) return;
 
-            // Try to find the actions container first (most reliable for where we want to put it)
             let targetContainer = document.querySelector(TOOLBAR_ACTIONS_SELECTOR);
 
-            // If not found, try the general toolbar
             if (!targetContainer) {
                 const toolbar = document.querySelector(TOOLBAR_SELECTOR);
                 if (toolbar) {
-                    // If we found the toolbar but not the actions container, maybe prepend to toolbar?
-                    // Or maybe the selector changed. Let's try to prepend to the toolbar itself as fallback.
                     targetContainer = toolbar;
                 }
             }
 
             if (!targetContainer) {
-                // If still not found, search specifically for text content "Share" or aria-labels to identify the toolbar
-                // This is a "Hail Mary" fallback for robustness. Supports English and Ukrainian.
                 const buttons = document.querySelectorAll('div[role="button"]');
                 for (let btn of buttons) {
                     const label = btn.getAttribute("aria-label");
                     const text = btn.innerText;
                     if (text === "Share" || label === "Share" || label === "Поділитися") {
-                        // The parent of the share button is likely the actions container
                         targetContainer = btn.parentElement;
                         console.log('[GP-TimTools] Found toolbar via Share button:', label);
                         break;
@@ -154,48 +146,40 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                 }
             }
 
-            if (!targetContainer) {
-                // Debug: why not found?
-                // console.log('[GP-TimTools] Toolbar not found. Photos selected?');
-                return;
-            }
+            if (!targetContainer) return;
 
-            // Create Container
             const container = document.createElement('div');
             container.className = 'DNAsC G6iPcb gp-kml-export-container';
-            // Styling to match existing toolbar items if possible (margins etc)
             container.style.display = 'inline-flex';
             container.style.alignItems = 'center';
             container.style.marginLeft = '8px';
 
+            const SVG_KML_ICON = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M120-240q-33 0-56.5-23.5T40-320q0-33 23.5-56.5T120-400h10.5q4.5 0 9.5 2l182-182q-2-5-2-9.5V-600q0-33 23.5-56.5T400-680q33 0 56.5 23.5T480-600q0 2-2 20l102 102q5-2 9.5-2h21q4.5 0 9.5 2l142-142q-2-5-2-9.5V-640q0-33 23.5-56.5T840-720q33 0 56.5 23.5T920-640q0 33-23.5 56.5T840-560h-10.5q-4.5 0-9.5-2L678-420q2 5 2 9.5v10.5q0 33-23.5 56.5T600-320q-33 0-56.5-23.5T520-400v-10.5q0-4.5 2-9.5L420-522q-5 2-9.5 2H400q-2 0-20-2L198-340q2 5 2 9.5v10.5q0 33-23.5 56.5T120-240Z"/></svg>`;
+
             const button = document.createElement('button');
-            button.className = 'gp-kml-export-btn';
+            button.className = 'pYTkkf-Bz112c-LgbsSe pYTkkf-Bz112c-LgbsSe-OWXEXe-SfQLQb-suEOdc gp-kml-export-btn';
             button.title = 'Export Selected to KML';
             button.ariaLabel = 'Export KML';
-            // Reset button styles to blend in
             button.style.background = 'transparent';
             button.style.border = 'none';
             button.style.cursor = 'pointer';
-            button.style.padding = '8px';
+            button.style.width = '40px';
+            button.style.height = '40px';
+            button.style.padding = '0';
             button.style.borderRadius = '50%';
             button.style.display = 'flex';
             button.style.alignItems = 'center';
             button.style.justifyContent = 'center';
+            button.style.color = 'inherit';
+            button.style.transition = 'background-color 0.2s';
 
-            button.onmouseover = () => button.style.backgroundColor = 'rgba(255,255,255,0.1)';
+            button.onmouseover = () => button.style.backgroundColor = 'rgba(128, 128, 128, 0.16)';
             button.onmouseout = () => button.style.backgroundColor = 'transparent';
 
-            const iconUrl = chrome.runtime.getURL('assets/active/kml-export-icon.svg');
-            const icon = document.createElement('img');
-            icon.src = iconUrl;
-            icon.style.cssText = 'width: 24px; height: 24px; display: block;';
-
-            button.appendChild(icon);
+            button.innerHTML = `<span class="pYTkkf-Bz112c-kBDsod-Rtc0Jf" aria-hidden="true" style="display:flex;align-items:center;justify-content:center;">${SVG_KML_ICON}</span>`;
             button.addEventListener('click', callback);
 
             container.appendChild(button);
-
-            // Insert: prepend to target container so it appears on the left or start of actions
             targetContainer.prepend(container);
             console.log('[GP-TimTools] KML Export button injected.');
         },
