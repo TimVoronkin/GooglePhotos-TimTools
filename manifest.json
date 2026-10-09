@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "Google Photos Tim Tools",
   "version": "0.6",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArMTU1Z6Vr+M26gGI+sB+jtvho+NqibN9roLvAjFVTTpzWGjGoyM1Wtgh8kiqk93paMR6n2SRiaq3NHHLEjwtZJsf273auOy7OBfU6YIL7sYPNwF/WhNuf3B/qY6LUfQPGHccE9Ujw4pnJGwIUdf/f+Ts1iy8cuFR8GfXRcFYkzcHpfVhac4CJAa2suB7/lf4UyYBEMbGXhDBwo/byLSveE6lXRY5BnOICS/itZKZSqXI2qupE6neCfbcOIAex30a5cqmUEwbaAtQ0SeGnNWrL/6/N1HWfGrRLnxYlw2AudbT5p6wNErhYKUY+QNJDGorH8BoDXdBnMeaB/MzJe7XmwIDAQAB",
   "description": "Combined tools for Google Photos: Up Button, Date Search, Delete Shortcut, KML Export, Drag in Time & Smart Archiving",
   "icons": {
     "128": "assets/active/logo-128.png"

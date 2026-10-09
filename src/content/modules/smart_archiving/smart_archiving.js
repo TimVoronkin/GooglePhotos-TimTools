@@ -46,10 +46,8 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             this.initialized = true;
             log('Initializing Smart Archiving module...');
 
-            // Load saved filters
-            const settings = await window.TimTools.Settings.getAll();
-            this.filters = Array.isArray(settings.smartArchivingFilters) ? settings.smartArchivingFilters : [];
-            log(`Loaded ${this.filters.length} configured filters:`, this.filters);
+            // Load saved filters (scoped to active account)
+            await this.loadFilters();
 
             // Start DOM observer to inject the button in the header
             this.startHeaderObserver();
@@ -98,7 +96,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 fsid = w.FdrFJe || null;
                 bl = w.cfb2h || null;
                 path = w.eptZe || null;
-                account = w.oPEP7c || null;
+                account = w.oPEP7c || w.S06Grb || null;
             }
 
             if (!at) {
@@ -111,7 +109,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                             const fsidMatch = content.match(/"FdrFJe":"([^"]+)"/);
                             const blMatch = content.match(/"cfb2h":"([^"]+)"/);
                             const pathMatch = content.match(/"eptZe":"([^"]+)"/);
-                            const accMatch = content.match(/"oPEP7c":"([^"]+)"/);
+                            const accMatch = content.match(/"oPEP7c":"([^"]+)"/) || content.match(/"S06Grb":"([^"]+)"/);
 
                             if (atMatch) at = atMatch[1];
                             if (fsidMatch) fsid = fsidMatch[1];
@@ -131,6 +129,62 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 this.cachedWizData = res;
             }
             return res;
+        },
+
+        getAccountIdentifier: function () {
+            const wiz = this.getWizGlobalData();
+            if (wiz && wiz.account) {
+                return String(wiz.account).trim();
+            }
+
+            try {
+                const accountEl = document.querySelector('a[href*="SignOutOptions"], a[aria-label*="@"]');
+                if (accountEl) {
+                    const label = accountEl.getAttribute('aria-label') || '';
+                    const emailMatch = label.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+                    if (emailMatch) return emailMatch[1].toLowerCase();
+                }
+            } catch (e) {}
+
+            const uMatch = window.location.pathname.match(/\/u\/(\d+)/);
+            if (uMatch) {
+                return `u${uMatch[1]}`;
+            }
+
+            return 'default_account';
+        },
+
+        loadFilters: async function () {
+            const settings = await window.TimTools.Settings.getAll();
+            const accountKey = this.getAccountIdentifier();
+            log(`Loading filters for account [${accountKey}]...`);
+
+            const byAccount = settings.smartArchivingFiltersByAccount || {};
+            if (Array.isArray(byAccount[accountKey])) {
+                this.filters = byAccount[accountKey];
+            } else if (Array.isArray(settings.smartArchivingFilters) && settings.smartArchivingFilters.length > 0) {
+                // Migration: adopt existing legacy filters for this account
+                this.filters = settings.smartArchivingFilters;
+                byAccount[accountKey] = this.filters;
+                window.TimTools.Settings.set({ smartArchivingFiltersByAccount: byAccount });
+            } else {
+                this.filters = [];
+            }
+            log(`Loaded ${this.filters.length} filters for account [${accountKey}]:`, this.filters);
+            return this.filters;
+        },
+
+        saveFilters: async function () {
+            const accountKey = this.getAccountIdentifier();
+            const settings = await window.TimTools.Settings.getAll();
+            const byAccount = settings.smartArchivingFiltersByAccount || {};
+            byAccount[accountKey] = this.filters;
+
+            await window.TimTools.Settings.set({
+                smartArchivingFiltersByAccount: byAccount,
+                smartArchivingFilters: this.filters // sync legacy key as well
+            });
+            log(`Saved ${this.filters.length} filters for account [${accountKey}].`);
         },
 
         makeApiRequest: async function (rpcid, requestData) {
@@ -301,16 +355,21 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         },
 
         getStoredArchivedKeys: function () {
+            const accountKey = this.getAccountIdentifier();
+            const storageKey = `sa_archived_keys_${accountKey}`;
             return new Promise((resolve) => {
-                chrome.storage.local.get(['smartArchivingActiveArchivedKeys'], (result) => {
-                    resolve(result.smartArchivingActiveArchivedKeys || null);
+                chrome.storage.local.get([storageKey, 'smartArchivingActiveArchivedKeys'], (result) => {
+                    const keys = result[storageKey] !== undefined ? result[storageKey] : (result.smartArchivingActiveArchivedKeys || null);
+                    resolve(keys);
                 });
             });
         },
 
         setStoredArchivedKeys: function (keysArray) {
+            const accountKey = this.getAccountIdentifier();
+            const storageKey = `sa_archived_keys_${accountKey}`;
             return new Promise((resolve) => {
-                chrome.storage.local.set({ smartArchivingActiveArchivedKeys: keysArray }, () => {
+                chrome.storage.local.set({ [storageKey]: keysArray, smartArchivingActiveArchivedKeys: keysArray }, () => {
                     resolve();
                 });
             });
@@ -339,14 +398,12 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 let toUnarchive = [];
 
                 if (prevArchivedKeys === null) {
-                    // First run: archive all photos that belong to disabled filters
-                    toArchive = Array.from(currentOffSet);
-                    toUnarchive = [];
-                    if (toArchive.length === 0) {
-                        await this.setStoredArchivedKeys([]);
-                        log('Auto-check: First run initialized with 0 archived photos.');
-                        return;
-                    }
+                    // First run on this browser or fresh install:
+                    // Initialize the baseline with currentOffSet without redundant archiving,
+                    // as these photos are already in their desired state from previous configuration.
+                    await this.setStoredArchivedKeys(Array.from(currentOffSet));
+                    log(`Auto-check: Initialized baseline on this device with ${currentOffSet.size} keys.`);
+                    return;
                 } else {
                     const prevSet = new Set(prevArchivedKeys);
                     // Photos currently in disabled albums that were not previously archived
@@ -655,9 +712,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 }
             }
             // Save updated counts to settings
-            window.TimTools.Settings.set({
-                smartArchivingFilters: this.filters
-            });
+            await this.saveFilters();
         },
 
         closePopover: function () {
@@ -1079,10 +1134,8 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
             this.filters = newFilters;
 
-            // Save to chrome storage
-            await window.TimTools.Settings.set({
-                smartArchivingFilters: this.filters
-            });
+            // Save to chrome storage (scoped to account)
+            await this.saveFilters();
 
             log(`Saved ${this.filters.length} filters to storage.`);
 
@@ -1182,9 +1235,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     filter.enabled = this.workingToggles.get(filter.albumMediaKey) !== false;
                 }
 
-                await window.TimTools.Settings.set({
-                    smartArchivingFilters: this.filters
-                });
+                await this.saveFilters();
 
                 // Update stored archived keys baseline so auto-check stays accurate
                 await this.setStoredArchivedKeys(toArchive);

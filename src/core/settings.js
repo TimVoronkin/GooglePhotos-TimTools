@@ -10,6 +10,7 @@ window.TimTools = window.TimTools || {};
         enableDragInTime: true,
         enableSmartArchiving: true,
         smartArchivingFilters: [],
+        smartArchivingFiltersByAccount: {},
         kmlCreateSubfolder: true,
         kmlFolderName: "GooglePhotosExports",
         kmlFilePrefix: "MyExport_",
@@ -23,8 +24,11 @@ window.TimTools = window.TimTools || {};
         get: function (keys) {
             return new Promise((resolve) => {
                 chrome.storage.sync.get(keys || DEFAULTS, (items) => {
+                    if (chrome.runtime.lastError) {
+                        console.warn('[GP-TimTools] chrome.storage.sync.get warning:', chrome.runtime.lastError.message);
+                    }
                     // Merge with defaults to ensure all keys exist
-                    resolve({ ...DEFAULTS, ...items });
+                    resolve({ ...DEFAULTS, ...(items || {}) });
                 });
             });
         },
@@ -32,7 +36,12 @@ window.TimTools = window.TimTools || {};
         set: function (items) {
             return new Promise((resolve) => {
                 chrome.storage.sync.set(items, () => {
-                    resolve();
+                    if (chrome.runtime.lastError) {
+                        console.error('[GP-TimTools] chrome.storage.sync.set error:', chrome.runtime.lastError.message);
+                        resolve(false);
+                    } else {
+                        resolve(true);
+                    }
                 });
             });
         },
