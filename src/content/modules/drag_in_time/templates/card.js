@@ -13,7 +13,7 @@ window.TimTools.Modules.DragInTimeTemplates.getPhotoCardHtml = function (photo, 
     const dateStr = options.dateString || '';
 
     return /* html */ `
-        <!-- Top-Left "drag" Badge (Selected photos only) -->
+        <!-- Top-Left "drag" Badge (Selected) or "Library" Badge (Context) -->
         ${isDraggable ? /* html */ `
             <div class="gp-card-drag-badge">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -21,7 +21,11 @@ window.TimTools.Modules.DragInTimeTemplates.getPhotoCardHtml = function (photo, 
                 </svg>
                 <span>drag</span>
             </div>
-        ` : ''}
+        ` : (photo.isContextPhoto ? /* html */ `
+            <div class="gp-card-context-badge" title="Reference photo from your Main Library timeline">
+                <span>Library</span>
+            </div>
+        ` : '')}
 
         <!-- Top-Right "modified" Badge -->
         <div class="gp-card-modified-badge">modified</div>

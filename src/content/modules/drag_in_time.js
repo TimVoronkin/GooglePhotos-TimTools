@@ -34,6 +34,8 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         showFilenames: false,
         isSquareAspect: true,
         filenameCache: new Map(), // mediaKey -> filename
+        albumPhotoKeys: new Set(),
+        albumDedupKeys: new Set(),
         isDragging: false,
         draggedPhotoId: null,
         dragSourceIndex: -1,
@@ -129,10 +131,10 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
         captureSelectedKeys: function () {
             this.selectedMediaKeys.clear();
-            const selectedCards = Array.from(document.querySelectorAll(SELECTED_PHOTO_SELECTOR + ', div.rtIMgb [role="checkbox"][aria-checked="true"]'));
-            log(`Found ${selectedCards.length} selected DOM cards on main page.`);
-            selectedCards.forEach((el, i) => {
-                const card = el.closest('div.rtIMgb') || el;
+            const selectedElements = Array.from(document.querySelectorAll(SELECTED_PHOTO_SELECTOR + ', div.rtIMgb [role="checkbox"][aria-checked="true"]'));
+            const uniqueCards = Array.from(new Set(selectedElements.map(el => el.closest('div.rtIMgb') || el)));
+            log(`Found ${uniqueCards.length} selected DOM cards on main page.`);
+            uniqueCards.forEach((card, i) => {
                 const info = this.extractCardInfo(card, i);
                 if (info && info.mediaKey) {
                     this.selectedMediaKeys.add(info.mediaKey);
@@ -274,7 +276,17 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     return new Date(year, month, day, hours, minutes, seconds);
                 }
 
-                // Pattern D: Standard English JS Date
+                // Pattern D: Day Month without year (e.g. "12 трав." or "May 12")
+                const dayMonthNoYearMatch = clean.match(/(\d{1,2})\s+([а-яА-ЯіІїЇєЄa-zA-Z]+)/iu);
+                if (dayMonthNoYearMatch) {
+                    const day = parseInt(dayMonthNoYearMatch[1], 10);
+                    const month = findMonth(dayMonthNoYearMatch[2]);
+                    if (month !== -1) {
+                        return new Date(new Date().getFullYear(), month, day, hours, minutes, seconds);
+                    }
+                }
+
+                // Pattern E: Standard English JS Date
                 const cleanedDateStr = clean.replace(/[рг]\./iu, '').trim();
                 const nativeDate = new Date(cleanedDateStr);
                 if (!isNaN(nativeDate.getTime())) {
@@ -412,25 +424,76 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const ariaLabel = linkEl ? linkEl.getAttribute('aria-label') : (cardEl.getAttribute('aria-label') || '');
             let parsedDate = this.parseDateFromAriaLabel(ariaLabel);
             if (!parsedDate) {
-                // Safe chronological fallback: never default to Date.now() which jumps to the top!
-                if (this.photos && this.photos.length > 0) {
-                    parsedDate = new Date(this.photos[this.photos.length - 1].timestamp.getTime() - (index + 1) * 60000);
-                } else {
-                    parsedDate = new Date(Date.now() - (index + 1) * 60000);
+                // Sibling fallback: look at nearby cards to preserve chronology instead of jumping to 2026
+                if (cardEl) {
+                    let sibling = cardEl.previousElementSibling || cardEl.nextElementSibling;
+                    while (sibling && !parsedDate) {
+                        const sLabel = sibling.querySelector('a')?.getAttribute('aria-label') || sibling.getAttribute('aria-label') || '';
+                        parsedDate = this.parseDateFromAriaLabel(sLabel);
+                        sibling = sibling.previousElementSibling || sibling.nextElementSibling;
+                    }
+                }
+                if (!parsedDate) {
+                    if (this.photos && this.photos.length > 0) {
+                        parsedDate = new Date(this.photos[this.photos.length - 1].timestamp.getTime() - (index + 1) * 60000);
+                    } else {
+                        parsedDate = new Date(Date.now() - (index + 1) * 60000);
+                    }
                 }
             }
 
-            // Extract media key from jslog="...; 8:AF1Qip..."
+            // Extract media key:
             let mediaKey = '';
-            const jslog = cardEl.getAttribute('jslog') || (linkEl ? linkEl.getAttribute('jslog') : '');
-            const mkMatch = jslog.match(/8:(AF1Q[^\s;,]+)/);
-            if (mkMatch) {
-                mediaKey = mkMatch[1];
-            } else if (linkEl && linkEl.href) {
-                const urlParts = linkEl.href.split('/');
-                mediaKey = urlParts[urlParts.length - 1] || `photo_${index}`;
-            } else {
-                mediaKey = `photo_${index}_${parsedDate.getTime()}`;
+            const currentAlbumMatch = window.location.href.match(/\/(?:album|share)\/(AF1Qip[a-zA-Z0-9_\-]{20,})/i);
+            const currentAlbumKey = currentAlbumMatch ? currentAlbumMatch[1] : null;
+
+            // 1. Direct photo URL (/photo/AF1Q...) from link
+            const link = cardEl.matches('a') ? cardEl : (cardEl.querySelector('a') || cardEl.closest('a'));
+            const linkHref = link ? (link.getAttribute('href') || link.href || '') : '';
+            const photoUrlMatch = linkHref.match(/\/photo\/(AF1Qip[a-zA-Z0-9_\-]{20,})/i);
+            if (photoUrlMatch && photoUrlMatch[1] !== currentAlbumKey) {
+                mediaKey = photoUrlMatch[1];
+            }
+
+            // 2. Scan card outerHTML for any AF1Qip keys that are NOT the album key
+            if (!mediaKey) {
+                const cardHtml = cardEl.outerHTML || '';
+                const allAf1qMatches = Array.from(cardHtml.matchAll(/AF1Qip[a-zA-Z0-9_\-]{25,}/gi), m => m[0]);
+                const validPhotoKeys = allAf1qMatches.filter(k => k !== currentAlbumKey);
+                if (validPhotoKeys.length > 0) {
+                    mediaKey = validPhotoKeys[0];
+                }
+            }
+
+            // 3. Data attributes: data-id, data-media-key, data-guid
+            if (!mediaKey) {
+                const dataId = cardEl.getAttribute('data-id') || cardEl.getAttribute('data-media-key') || cardEl.getAttribute('data-guid');
+                if (dataId && dataId !== currentAlbumKey && !dataId.includes('photo_')) {
+                    mediaKey = dataId;
+                }
+            }
+
+            // 4. jslog item key: 1:AF1Q...
+            if (!mediaKey) {
+                const jslog = cardEl.getAttribute('jslog') || (link ? link.getAttribute('jslog') : '');
+                const itemMkMatch = jslog ? jslog.match(/1:(AF1Qip[a-zA-Z0-9_\-]{20,})/i) : null;
+                if (itemMkMatch && itemMkMatch[1] !== currentAlbumKey) {
+                    mediaKey = itemMkMatch[1];
+                }
+            }
+
+            // 5. Fallback URL segment
+            if (!mediaKey && linkHref) {
+                const cleanHref = linkHref.split('?')[0].split('#')[0];
+                const urlParts = cleanHref.split('/');
+                const lastPart = urlParts[urlParts.length - 1];
+                if (lastPart && lastPart !== currentAlbumKey && !lastPart.includes('album')) {
+                    mediaKey = lastPart;
+                }
+            }
+
+            if (!mediaKey) {
+                mediaKey = `photo_${index}_${parsedDate ? parsedDate.getTime() : Date.now()}`;
             }
 
             // Extract filename from cache or DOM
@@ -448,7 +511,19 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             }
             if (!bgUrl) {
                 const img = cardEl.querySelector('img');
-                if (img) bgUrl = img.currentSrc || img.src;
+                if (img) {
+                    bgUrl = img.getAttribute('src') || img.src || '';
+                    if (bgUrl.startsWith('data:') || !bgUrl) {
+                        bgUrl = img.getAttribute('data-src') || img.getAttribute('data-latest-bg') || '';
+                    }
+                    if (!bgUrl && img.getAttribute('srcset')) {
+                        const srcMatch = img.getAttribute('srcset').match(/(https?:\/\/[^\s,]+)/);
+                        if (srcMatch) bgUrl = srcMatch[1];
+                    }
+                    if (!bgUrl && img.currentSrc && !img.currentSrc.startsWith('data:')) {
+                        bgUrl = img.currentSrc;
+                    }
+                }
             }
 
             // Video info
@@ -597,16 +672,226 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         },
 
         // --- Step 3: Open Google-styled Modal Window ---
-        openDragModal: function () {
+        openDragModal: async function () {
             if (this.modalOverlay) {
                 this.closeDragModal();
             }
 
-            this.photos = this.collectPhotosForModal();
+            const initialPhotos = this.collectPhotosForModal();
             this.modifiedTimestamps.clear();
+            this.hasReachedOldestEnd = false;
+            this.hasReachedNewestEnd = false;
+            this.isAlbumContextMode = false;
+            this.libraryNextPageOlderToken = null;
 
-            log(`Opening modal with ${this.photos.length} photos.`);
+            log(`Initial scan: found ${initialPhotos.length} photos in DOM.`);
+
+            const isAlbum = /\/(?:u\/\d+\/)?(album|share)\//i.test(window.location.href);
+            const allSelected = initialPhotos.length > 0 && initialPhotos.every(p => p.isSelected);
+
+            this.photos = initialPhotos;
+            log(`Opening modal with ${this.photos.length} photos. Mode: ${isAlbum ? 'Album' : 'Main Stream'}, AllSelected: ${allSelected}`);
             this.buildModalDOM();
+
+            // If we are in an album or all visible photos are selected, fetch real library timeline context!
+            if ((isAlbum || allSelected) && initialPhotos.length > 0) {
+                this.isAlbumContextMode = true;
+                await this.loadLibraryTimelineContext(initialPhotos);
+            }
+        },
+
+        loadLibraryTimelineContext: async function (selectedPhotos) {
+            log('[API Context] Fetching Main Library timeline photos around album dates...');
+            this.showStreamLoadingIndicator('older', true);
+
+            try {
+                // Ignore any future timestamps beyond today + 1 day
+                let validTimestamps = selectedPhotos
+                    .map(p => p.timestamp.getTime())
+                    .filter(t => !isNaN(t) && t <= (Date.now() + 86400000));
+                if (validTimestamps.length === 0) {
+                    validTimestamps = selectedPhotos.map(p => p.timestamp.getTime()).filter(t => !isNaN(t));
+                }
+                if (validTimestamps.length === 0) validTimestamps = [Date.now()];
+                const maxTime = Math.max(...validTimestamps);
+
+                log(`[API Context] Target timeline anchor date: ${new Date(maxTime).toLocaleDateString()} (${maxTime})`);
+
+                const wizData = this.getWizGlobalData();
+                if (!wizData || !wizData.at) {
+                    warn('[API Context] WIZ session data not found, skipping library context fetch.');
+                    return;
+                }
+
+                // If in an album, fetch exact photo mediaKeys from album API snAcKc
+                const albumMatch = window.location.href.match(/\/(?:album|share)\/(AF1Qip[a-zA-Z0-9_\-]{20,})/i);
+                if (albumMatch) {
+                    const albumKey = albumMatch[1];
+                    try {
+                        const albumRes = await this.makeApiRequest('snAcKc', [albumKey, null, null, null], wizData);
+                        if (albumRes && Array.isArray(albumRes[1])) {
+                            albumRes[1].forEach(item => {
+                                if (item[0]) this.albumPhotoKeys.add(item[0]);
+                                if (item[3]) this.albumDedupKeys.add(item[3]);
+                            });
+                            log(`[API Context] Loaded ${this.albumPhotoKeys.size} true photo keys from album [${albumKey}] via snAcKc.`);
+                        }
+                    } catch (e) {
+                        warn('[API Context] Could not fetch album keys via snAcKc:', e);
+                    }
+                }
+
+                // Call lcxiM RPC around maxTime + 1 day so we capture both newer and older
+                const requestData = [null, maxTime + (24 * 60 * 60 * 1000), 80, null, 1, 1];
+                const res = await this.makeApiRequest('lcxiM', requestData, wizData);
+
+                if (res && Array.isArray(res[0])) {
+                    const rawItems = res[0];
+                    const existingKeys = new Set(this.photos.map(p => p.mediaKey).filter(Boolean));
+                    const existingFingerprints = new Set(
+                        this.photos.map(p => this.getThumbFingerprint(p.bgUrl)).filter(fp => fp && fp.length > 15)
+                    );
+                    let added = 0;
+
+                    for (const item of rawItems) {
+                        const parsed = this.parseLibraryItem(item);
+                        if (!parsed) continue;
+
+                        const fp = this.getThumbFingerprint(parsed.bgUrl);
+                        const isDuplicate = 
+                            existingKeys.has(parsed.mediaKey) ||
+                            (this.albumPhotoKeys && this.albumPhotoKeys.has(parsed.mediaKey)) ||
+                            (this.albumDedupKeys && parsed.dedupKey && this.albumDedupKeys.has(parsed.dedupKey)) ||
+                            (fp && existingFingerprints.has(fp));
+
+                        if (!isDuplicate) {
+                            this.photos.push(parsed);
+                            existingKeys.add(parsed.mediaKey);
+                            if (fp) existingFingerprints.add(fp);
+                            added++;
+                        } else {
+                            log(`[API Context] Filtered duplicate item from Library: ${parsed.mediaKey}`);
+                        }
+                    }
+
+                    log(`[API Context] Loaded ${added} surrounding photos from Main Library timeline.`);
+                    if (res[1]) this.libraryNextPageOlderToken = res[1];
+
+                    // Sort chronologically (newest down to oldest)
+                    this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+                    this.renderModalPhotos();
+                } else {
+                    log('[API Context] No library photos returned or empty response from lcxiM.');
+                }
+            } catch (err) {
+                error('[API Context] Error loading library timeline context:', err);
+            } finally {
+                this.showStreamLoadingIndicator('older', false);
+            }
+        },
+
+        getThumbFingerprint: function (url) {
+            if (!url || typeof url !== 'string' || url.startsWith('data:') || url.startsWith('blob:')) return '';
+            try {
+                // If it contains a Google CDN token like AP1Gcz... or AN-o3...
+                const cdnTokenMatch = url.match(/(AP1Gcz[a-zA-Z0-9_\-]+|AN-o3[a-zA-Z0-9_\-]+)/);
+                if (cdnTokenMatch) return cdnTokenMatch[1];
+
+                // Otherwise strip size parameters (=...) and query string (?...)
+                const clean = url.split('?')[0].split('=')[0].trim();
+                const parts = clean.split('/');
+                const last = parts[parts.length - 1];
+                return (last && last.length > 15) ? last : clean;
+            } catch (e) {
+                return '';
+            }
+        },
+
+        deduplicatePhotos: function () {
+            const seenMediaKeys = new Set();
+            const seenDedupKeys = new Set();
+            const seenFingerprints = new Set();
+            const seenExactTimes = new Set();
+            const result = [];
+
+            for (const p of this.photos) {
+                const mk = p.mediaKey && !p.mediaKey.startsWith('photo_') ? p.mediaKey : null;
+                const dk = p.dedupKey || null;
+                const fp = this.getThumbFingerprint(p.bgUrl);
+                const exactTime = p.timestamp ? p.timestamp.getTime() : null;
+
+                let isDuplicate = false;
+
+                if (mk && seenMediaKeys.has(mk)) isDuplicate = true;
+                if (!isDuplicate && dk && seenDedupKeys.has(dk)) isDuplicate = true;
+                if (!isDuplicate && fp && fp.length > 15 && seenFingerprints.has(fp)) isDuplicate = true;
+                if (!isDuplicate && exactTime && seenExactTimes.has(exactTime)) {
+                    const match = result.find(x => x.timestamp && x.timestamp.getTime() === exactTime);
+                    if (match && (
+                        (match.filename && p.filename && match.filename === p.filename) ||
+                        (match.duration && p.duration && match.duration === p.duration) ||
+                        (Math.abs((match.aspectRatio || 1) - (p.aspectRatio || 1)) < 0.02)
+                    )) {
+                        isDuplicate = true;
+                    }
+                }
+
+                if (isDuplicate) {
+                    // Selected album photos always win over context photos
+                    if (p.isSelected) {
+                        const idx = result.findIndex(x => 
+                            (mk && x.mediaKey === mk) || 
+                            (fp && fp.length > 15 && this.getThumbFingerprint(x.bgUrl) === fp) ||
+                            (exactTime && x.timestamp && x.timestamp.getTime() === exactTime)
+                        );
+                        if (idx !== -1 && !result[idx].isSelected) {
+                            result[idx] = p;
+                        }
+                    }
+                    continue;
+                }
+
+                if (mk) seenMediaKeys.add(mk);
+                if (dk) seenDedupKeys.add(dk);
+                if (fp && fp.length > 15) seenFingerprints.add(fp);
+                if (exactTime) seenExactTimes.add(exactTime);
+                result.push(p);
+            }
+
+            this.photos = result;
+        },
+
+        parseLibraryItem: function (itemData) {
+            if (!itemData || !itemData[0]) return null;
+            const mediaKey = itemData[0];
+            const timestampMs = parseInt(itemData[2], 10);
+            if (isNaN(timestampMs)) return null;
+
+            const thumbUrl = itemData[1]?.[0] || '';
+            const resW = itemData[1]?.[1];
+            const resH = itemData[1]?.[2];
+            const isVideo = Boolean(itemData?.at(-1)?.[76647426]?.[0]);
+            const duration = itemData?.at(-1)?.[76647426]?.[0] || '';
+            const dedupKey = itemData[3] || null;
+            const date = new Date(timestampMs);
+
+            return {
+                id: mediaKey,
+                mediaKey: mediaKey,
+                dedupKey: dedupKey,
+                filename: '',
+                aspectRatio: (resW && resH) ? (resW / resH) : (isVideo ? 16 / 9 : 1),
+                element: null,
+                ariaLabel: '',
+                timestamp: date,
+                originalTimestamp: new Date(timestampMs),
+                bgUrl: thumbUrl,
+                isVideo: isVideo,
+                duration: duration,
+                isSelected: false,
+                isContextPhoto: true,
+                isModified: false
+            };
         },
 
         closeDragModal: function () {
@@ -691,11 +976,11 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     const clientHeight = modalBody.clientHeight;
 
                     // 1. Approaching bottom (within 400px) -> load older photos automatically!
-                    if (scrollTop + clientHeight >= scrollHeight - 400) {
+                    if (scrollTop + clientHeight >= scrollHeight - 400 && !this.hasReachedOldestEnd) {
                         this.loadMorePhotos('older');
                     }
                     // 2. Approaching top (within 150px) and not already at newest -> load newer photos automatically!
-                    else if (scrollTop <= 150 && !this.checkIfAtNewestPhotos()) {
+                    else if (scrollTop <= 150 && !this.hasReachedNewestEnd && !this.checkIfAtNewestPhotos()) {
                         const prevScrollHeight = modalBody.scrollHeight;
                         this.loadMorePhotos('newer', (count) => {
                             if (count > 0 && modalBody) {
@@ -717,9 +1002,9 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     const scrollHeight = modalBody.scrollHeight;
                     const clientHeight = modalBody.clientHeight;
 
-                    if (e.deltaY > 0 && (scrollTop + clientHeight >= scrollHeight - 120)) {
+                    if (e.deltaY > 0 && !this.hasReachedOldestEnd && (scrollTop + clientHeight >= scrollHeight - 120)) {
                         this.loadMorePhotos('older');
-                    } else if (e.deltaY < 0 && scrollTop <= 120 && !this.checkIfAtNewestPhotos()) {
+                    } else if (e.deltaY < 0 && !this.hasReachedNewestEnd && scrollTop <= 120 && !this.checkIfAtNewestPhotos()) {
                         const prevScrollHeight = modalBody.scrollHeight;
                         this.loadMorePhotos('newer', (count) => {
                             if (count > 0 && modalBody) {
@@ -755,6 +1040,8 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
         // --- Step 4: Render Photos in Modal Grouped by Day ---
         renderModalPhotos: function () {
+            this.deduplicatePhotos();
+
             const container = this.modalOverlay ? this.modalOverlay.querySelector('.gp-photos-stream-container') : null;
             if (!container) return;
 
@@ -1386,7 +1673,23 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 return;
             }
 
+            if (direction === 'older' && this.hasReachedOldestEnd) {
+                if (onComplete) onComplete(0);
+                return;
+            }
+            if (direction === 'newer' && this.hasReachedNewestEnd) {
+                if (onComplete) onComplete(0);
+                return;
+            }
+
             this.isLoadingMore = true;
+
+            // In Album / Context mode, fetch from Google Photos Main Library via RPC
+            if (this.isAlbumContextMode) {
+                this.loadMoreLibraryPhotos(direction, onComplete);
+                return;
+            }
+
             log(`[Auto-Scroll] Checking for more photos (${direction})...`);
 
             const currentKeys = new Set(this.photos.map(p => p.mediaKey));
@@ -1550,6 +1853,8 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     }
                 }
 
+                if (direction === 'older') this.hasReachedOldestEnd = true;
+                if (direction === 'newer') this.hasReachedNewestEnd = true;
                 log(`[Auto-Scroll] No further ${direction} photos returned from Google Photos.`);
                 if (onComplete) onComplete(0);
             };
@@ -1587,6 +1892,93 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 checkForNewCards();
                 finish([]);
             }, 5500);
+        },
+
+        loadMoreLibraryPhotos: async function (direction, onComplete) {
+            log(`[API Context] Loading more ${direction} library photos via RPC lcxiM...`);
+            this.showStreamLoadingIndicator(direction, true);
+
+            try {
+                const wizData = this.getWizGlobalData();
+                if (!wizData || !wizData.at) {
+                    warn('[API Context] WIZ session data missing.');
+                    if (direction === 'older') this.hasReachedOldestEnd = true;
+                    if (direction === 'newer') this.hasReachedNewestEnd = true;
+                    this.isLoadingMore = false;
+                    this.showStreamLoadingIndicator(direction, false);
+                    if (onComplete) onComplete(0);
+                    return;
+                }
+
+                let requestData = null;
+                if (direction === 'older') {
+                    if (this.libraryNextPageOlderToken) {
+                        requestData = [this.libraryNextPageOlderToken, null, 60, null, 1, 1];
+                    } else {
+                        const oldestTimestamp = this.photos.length > 0 ? this.photos[this.photos.length - 1].timestamp.getTime() : Date.now();
+                        requestData = [null, oldestTimestamp, 60, null, 1, 1];
+                    }
+                } else {
+                    const newestTimestamp = this.photos.length > 0 ? this.photos[0].timestamp.getTime() : Date.now();
+                    requestData = [null, newestTimestamp + (14 * 24 * 60 * 60 * 1000), 60, null, 1, 1];
+                }
+
+                const res = await this.makeApiRequest('lcxiM', requestData, wizData);
+                if (res && Array.isArray(res[0]) && res[0].length > 0) {
+                    const rawItems = res[0];
+                    const existingKeys = new Set(this.photos.map(p => p.mediaKey).filter(Boolean));
+                    const existingFingerprints = new Set(
+                        this.photos.map(p => this.getThumbFingerprint(p.bgUrl)).filter(fp => fp && fp.length > 15)
+                    );
+                    let added = 0;
+
+                    for (const item of rawItems) {
+                        const parsed = this.parseLibraryItem(item);
+                        if (!parsed) continue;
+
+                        const fp = this.getThumbFingerprint(parsed.bgUrl);
+                        const isDuplicate = 
+                            existingKeys.has(parsed.mediaKey) ||
+                            (this.albumPhotoKeys && this.albumPhotoKeys.has(parsed.mediaKey)) ||
+                            (this.albumDedupKeys && parsed.dedupKey && this.albumDedupKeys.has(parsed.dedupKey)) ||
+                            (fp && existingFingerprints.has(fp));
+
+                        if (!isDuplicate) {
+                            this.photos.push(parsed);
+                            existingKeys.add(parsed.mediaKey);
+                            if (fp) existingFingerprints.add(fp);
+                            added++;
+                        } else {
+                            log(`[API Context] Filtered duplicate item from Library: ${parsed.mediaKey}`);
+                        }
+                    }
+
+                    if (direction === 'older') {
+                        if (res[1]) this.libraryNextPageOlderToken = res[1];
+                        if (added === 0) this.hasReachedOldestEnd = true;
+                    } else {
+                        if (added === 0) this.hasReachedNewestEnd = true;
+                    }
+
+                    log(`[API Context] Fetched ${added} more ${direction} photos from library.`);
+                    this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+                    this.renderModalPhotos();
+                    if (onComplete) onComplete(added);
+                } else {
+                    log(`[API Context] No further ${direction} photos returned from Library.`);
+                    if (direction === 'older') this.hasReachedOldestEnd = true;
+                    if (direction === 'newer') this.hasReachedNewestEnd = true;
+                    if (onComplete) onComplete(0);
+                }
+            } catch (err) {
+                error(`[API Context] Error loading more ${direction} library photos:`, err);
+                if (direction === 'older') this.hasReachedOldestEnd = true;
+                if (direction === 'newer') this.hasReachedNewestEnd = true;
+                if (onComplete) onComplete(0);
+            } finally {
+                this.showStreamLoadingIndicator(direction, false);
+                this.isLoadingMore = false;
+            }
         },
 
         // --- Step 8: Save Changes via Google Photos API / Batch Handler ---
