@@ -2,9 +2,17 @@ window.TimTools = window.TimTools || {};
 window.TimTools.Modules = window.TimTools.Modules || {};
 
 (function () {
+    const logger = (window.TimTools.Logger && window.TimTools.Logger.create)
+        ? window.TimTools.Logger.create('DeleteShortcut')
+        : {
+            log: (...args) => console.log('[GP-TimTools][DeleteShortcut]', ...args),
+            warn: (...args) => console.warn('[GP-TimTools][DeleteShortcut]', ...args),
+            error: (...args) => console.error('[GP-TimTools][DeleteShortcut]', ...args)
+        };
+
     const DeleteShortcut = {
         init: function () {
-            console.log('[GP-TimTools] DeleteShortcut: Init');
+            logger.log('Init');
             // Listen in the capturing phase to intercept the key before page handlers
             window.addEventListener('keydown', this.handleKeyDown.bind(this), true);
         },
@@ -27,7 +35,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     }
                 }
 
-                console.log('[TimTools] DeleteShortcut: Intercepted Delete key. Searching for native delete button.');
+                logger.log('Intercepted Delete key. Searching for native delete button.');
 
                 // Prevent default delete key action
                 event.preventDefault();
@@ -36,10 +44,10 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 // Find and click the native delete button
                 const deleteBtn = this.findDeleteButton();
                 if (deleteBtn) {
-                    console.log('[TimTools] DeleteShortcut: Clicking native delete button.');
+                    logger.log('Clicking native delete button.');
                     deleteBtn.click();
                 } else {
-                    console.warn('[TimTools] DeleteShortcut: Delete button not found in DOM.');
+                    logger.warn('Delete button not found in DOM.');
                 }
             }
         },

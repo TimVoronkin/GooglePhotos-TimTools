@@ -2,16 +2,24 @@ window.TimTools = window.TimTools || {};
 window.TimTools.Modules = window.TimTools.Modules || {};
 
 (function () {
+    const logger = (window.TimTools.Logger && window.TimTools.Logger.create)
+        ? window.TimTools.Logger.create('UpButton')
+        : {
+            log: (...args) => console.log('[GP-TimTools][UpButton]', ...args),
+            warn: (...args) => console.warn('[GP-TimTools][UpButton]', ...args),
+            error: (...args) => console.error('[GP-TimTools][UpButton]', ...args)
+        };
+
     const UpButton = {
         init: function () {
-            console.log('[GP-TimTools] UpButton: Init');
+            logger.log('Init');
             let lastUrl = location.href;
             
             // 1. Observe child mutations and attribute changes for visibility toggles
             new MutationObserver(() => {
                 if (location.href !== lastUrl) {
                     lastUrl = location.href;
-                    console.log('[TimTools] UpButton: URL changed to', lastUrl);
+                    logger.log('URL changed to:', lastUrl);
                 }
                 this.checkAndAddButton();
             }).observe(document, { 
@@ -83,7 +91,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
             if (!isPhotoInSubContext) {
                 if (existingButton) {
-                    console.log('[TimTools] UpButton: Main timeline photo view or non-photo page. Hiding Up button.');
+                    logger.log('Main timeline view or non-photo page. Hiding Up button.');
                     existingButton.remove();
                 }
                 return;
@@ -105,7 +113,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const targetContainer = this.findActiveHeaderContainer();
             if (targetContainer) {
                 if (!targetContainer.querySelector('#up-button')) {
-                    console.log('[TimTools] UpButton: Active target container found. Injecting.');
+                    logger.log('Active target container found. Injecting button.');
                     this.injectButton(targetContainer);
                 }
             }
@@ -164,7 +172,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 const settings = await window.TimTools.Settings.getAll();
 
                 if (settings.upButtonClosePhoto) {
-                    console.log('[TimTools] UpButton: Closing photo view via native back button.');
+                    logger.log('Closing photo view via native back button.');
                     history.pushState(null, '', newUrl);
 
                     const nativeBackBtn = container.querySelector('a[jsname="hSRGPd"], button[aria-label*="Back"], button[aria-label*="Назад"], button[jsname="LgbsSe"]');
@@ -172,7 +180,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                         nativeBackBtn.click();
                     }
                 } else {
-                    console.log('[TimTools] UpButton: Navigating to:', newUrl);
+                    logger.log('Navigating to:', newUrl);
                     window.location.href = newUrl;
                 }
             });
@@ -180,10 +188,10 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             // Insert as second child or append
             if (container.children.length > 1) {
                 container.insertBefore(button, container.children[1]);
-                console.log('[TimTools] UpButton: Injected button as second child in active container.');
+                logger.log('Injected button as second child in active container.');
             } else {
                 container.appendChild(button);
-                console.log('[TimTools] UpButton: Appended button to active container.');
+                logger.log('Appended button to active container.');
             }
         }
     };

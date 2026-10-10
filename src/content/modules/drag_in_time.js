@@ -2,18 +2,22 @@ window.TimTools = window.TimTools || {};
 window.TimTools.Modules = window.TimTools.Modules || {};
 
 (function () {
-    const LOG_PREFIX = '[GP-TimTools][DragInTime]';
+    const logger = window.TimTools.Logger ? window.TimTools.Logger.create('DragInTime') : {
+        log: (...args) => console.log('[GP-TimTools][DragInTime]', ...args),
+        warn: (...args) => console.warn('[GP-TimTools][DragInTime]', ...args),
+        error: (...args) => console.error('[GP-TimTools][DragInTime]', ...args)
+    };
 
     function log(...args) {
-        console.log(LOG_PREFIX, ...args);
+        logger.log(...args);
     }
 
     function warn(...args) {
-        console.warn(LOG_PREFIX, ...args);
+        logger.warn(...args);
     }
 
     function error(...args) {
-        console.error(LOG_PREFIX, ...args);
+        logger.error(...args);
     }
 
     // Selectors

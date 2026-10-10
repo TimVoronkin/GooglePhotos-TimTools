@@ -273,9 +273,29 @@
                 </div>
             </section>
 
+            <!-- 8. Debug Logging -->
+            <section class="feature-card" id="card-debugLogging">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="card-icon-wrapper" aria-hidden="true">
+                            <span class="card-icon icon-terminal"></span>
+                        </div>
+                        <h2 class="card-title">Debug Logging</h2>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableDebugLogging">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-description">
+                    Outputs extension diagnostics and lifecycle events to the browser console using the unified format <code>[GP-TimTools][Module]</code>. When disabled, the extension produces no console logs.
+                </p>
+            </section>
+
         </main>
     </div>
 
+    <script src="../core/logger.js"></script>
     <script src="../core/settings.js"></script>
     <script src="options.js"></script>
 </body>

@@ -3,6 +3,14 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
 (function () {
+    const logger = (window.TimTools.Logger && window.TimTools.Logger.create)
+        ? window.TimTools.Logger.create('KmlExport')
+        : {
+            log: (...args) => console.log('[GP-TimTools][KmlExport]', ...args),
+            warn: (...args) => console.warn('[GP-TimTools][KmlExport]', ...args),
+            error: (...args) => console.error('[GP-TimTools][KmlExport]', ...args)
+        };
+
     const KmlExport = {
         photoQueue: [],
         extractedData: [],
@@ -11,23 +19,18 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
         startTime: 0,
 
         init: function () {
-            console.log('[GP-TimTools] KML Controller: Init');
+            logger.log('Init');
 
             // Ask the service worker if this tab is an extraction tab
-            // (We can't use URL hash because Google Photos strips it)
             chrome.runtime.sendMessage({ type: 'CHECK_EXTRACTION_MODE' }, (response) => {
                 if (chrome.runtime.lastError) {
-                    console.error('[GP-TimTools] KML Controller: Error checking mode:', chrome.runtime.lastError);
-                    // Fallback to Master Mode
+                    logger.error('Error checking mode:', chrome.runtime.lastError);
                     this.startMasterMode();
                     return;
                 }
 
-                console.log('[GP-TimTools] KML Controller: Mode check response:', response);
-
                 if (response && response.isExtraction) {
-                    console.log('[GP-TimTools] KML Controller: Child Mode, masterId:', response.masterId);
-                    // Show progress popup on child tab
+                    logger.log('Child Mode, masterId:', response.masterId);
                     const p = response.progress || {};
                     if (p.current !== undefined && p.total !== undefined) {
                         window.TimTools.Modules.KmlExport.UI.PopupManager.show(
@@ -45,13 +48,13 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
         },
 
         startMasterMode: function () {
-            console.log('[GP-TimTools] KML Controller: Master Mode');
+            logger.log('Master Mode started');
             this.listenForStop();
             this.initMaster();
         },
 
         initMaster: function () {
-            console.log('[GP-TimTools] KML Controller: Starting Observer');
+            logger.log('Starting toolbar observer');
             // Observe for toolbar
             const observer = new MutationObserver((mutations) => {
                 // Throttle or just log occasionally if needed, but for now just call inject
@@ -131,7 +134,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
         },
 
         onMessage: function (message) {
-            console.log('[TimTools] KML Controller: Received message', message.type);
+            logger.log('Received message:', message.type);
             if (message.type === 'GP_KML_DATA') {
                 this.extractedData.push(message.payload);
 
@@ -142,7 +145,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                 setTimeout(() => this.openNextPhotoInChild(current, total), 500);
 
             } else if (message.type === 'GP_KML_ERROR') {
-                console.warn('Skipping photo due to error:', message.payload);
+                logger.warn('Skipping photo due to error:', message.payload);
                 const total = this.extractedData.length + this.photoQueue.length + 1;
                 const current = this.extractedData.length + 1;
                 window.TimTools.Modules.KmlExport.UI.PopupManager.show(current, total, this.startTime, "Error extracting, skipping...");

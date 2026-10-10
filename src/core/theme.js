@@ -1,10 +1,15 @@
 window.TimTools = window.TimTools || {};
 
 (function () {
+    const logger = window.TimTools.Logger ? window.TimTools.Logger.create('Theme') : {
+        log: (...args) => console.log('[GP-TimTools][Theme]', ...args)
+    };
+
     const Theme = {
         _isDark: true,
 
         init: function () {
+            logger.log('Theme system initialized');
             // Apply default immediately so classes exist synchronously
             this.setTheme(this._isDark ? 'dark' : 'light');
 
@@ -33,6 +38,7 @@ window.TimTools = window.TimTools || {};
 
         setTheme: function (theme) {
             this._isDark = (theme !== 'light');
+            logger.log('Theme set to:', this._isDark ? 'dark' : 'light');
             const doc = document.documentElement;
             if (doc) {
                 const themeVal = this._isDark ? 'dark' : 'light';

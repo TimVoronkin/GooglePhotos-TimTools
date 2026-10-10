@@ -20,6 +20,7 @@
     {
       "matches": ["*://photos.google.com/*"],
       "js": [
+        "src/core/logger.js",
         "src/core/settings.js",
         "src/core/dom_utils.js",
         "src/core/theme.js",

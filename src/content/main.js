@@ -13,14 +13,26 @@ window.TimTools = window.TimTools || {};
     }
 
     async function init() {
-        console.log('[GP-TimTools] Initializing...');
+        const settings = await Settings.getAll();
+        if (window.TimTools.Logger) {
+            window.TimTools.Logger.init(settings.enableDebugLogging === true);
+        }
+
+        const logger = (window.TimTools.Logger && window.TimTools.Logger.create)
+            ? window.TimTools.Logger.create('Main')
+            : {
+                log: (...args) => console.log('[GP-TimTools][Main]', ...args),
+                warn: (...args) => console.warn('[GP-TimTools][Main]', ...args),
+                error: (...args) => console.error('[GP-TimTools][Main]', ...args)
+            };
+
+        logger.log('Initializing modules...');
 
         if (Theme && typeof Theme.init === 'function') {
             Theme.init();
         }
 
-        const settings = await Settings.getAll();
-        console.log('[GP-TimTools] Settings loaded:', settings);
+        logger.log('Settings loaded:', settings);
 
         if (Theme && typeof Theme.setTheme === 'function') {
             Theme.setTheme(settings.appTheme || 'dark');
@@ -33,6 +45,9 @@ window.TimTools = window.TimTools || {};
         if (chrome.storage && chrome.storage.onChanged) {
             chrome.storage.onChanged.addListener((changes, area) => {
                 if (area === 'sync') {
+                    if (changes.enableDebugLogging !== undefined && window.TimTools.Logger) {
+                        window.TimTools.Logger.setEnabled(changes.enableDebugLogging.newValue === true);
+                    }
                     Settings.getAll().then(updated => {
                         if (Theme && typeof Theme.setTheme === 'function') {
                             Theme.setTheme(updated.appTheme || 'dark');
@@ -43,56 +58,54 @@ window.TimTools = window.TimTools || {};
             });
         }
 
-
         if (settings.enableUpButton) {
             if (Modules.UpButton) {
                 Modules.UpButton.init();
-                console.log('[GP-TimTools] Up Button module loaded.');
+                logger.log('Up Button module loaded.');
             } else {
-                console.error('[GP-TimTools] Up Button module missing!');
+                logger.error('Up Button module missing!');
             }
         }
 
         if (settings.enableDateSearch) {
             if (Modules.DateSearch) {
                 Modules.DateSearch.init();
-                console.log('[GP-TimTools] Date Search module loaded.');
+                logger.log('Date Search module loaded.');
             }
         }
 
         if (settings.enableDeleteShortcut) {
             if (Modules.DeleteShortcut) {
                 Modules.DeleteShortcut.init();
-                console.log('[GP-TimTools] Delete Shortcut module loaded.');
+                logger.log('Delete Shortcut module loaded.');
             }
         }
 
         if (settings.enableKmlExport) {
             // KML Controller is nested
             if (Modules.KmlExport && Modules.KmlExport.Controller) {
-                console.log('[GP-TimTools] Initializing KML Export Controller...');
                 Modules.KmlExport.Controller.init();
-                console.log('[GP-TimTools] KML Export module loaded.');
+                logger.log('KML Export module loaded.');
             } else {
-                console.error('[GP-TimTools] KML Export Controller not found!', Modules.KmlExport);
+                logger.error('KML Export Controller not found!', Modules.KmlExport);
             }
         }
 
         if (settings.enableDragInTime) {
             if (Modules.DragInTime) {
                 Modules.DragInTime.init();
-                console.log('[GP-TimTools] Drag in Time module loaded.');
+                logger.log('Drag in Time module loaded.');
             } else {
-                console.error('[GP-TimTools] Drag in Time module missing!');
+                logger.error('Drag in Time module missing!');
             }
         }
 
         if (settings.enableSmartArchiving) {
             if (Modules.SmartArchiving) {
                 Modules.SmartArchiving.init();
-                console.log('[GP-TimTools] Smart Archiving module loaded.');
+                logger.log('Smart Archiving module loaded.');
             } else {
-                console.error('[GP-TimTools] Smart Archiving module missing!');
+                logger.error('Smart Archiving module missing!');
             }
         }
     }

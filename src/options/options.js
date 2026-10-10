@@ -3,6 +3,15 @@ document.addEventListener('DOMContentLoaded', () => {
     initMobileBookmarklet();
 });
 
+// Logger helper for options page
+const logger = (window.TimTools && window.TimTools.Logger && window.TimTools.Logger.create)
+    ? window.TimTools.Logger.create('Options')
+    : {
+        log: (...args) => console.log('[GP-TimTools][Options]', ...args),
+        warn: (...args) => console.warn('[GP-TimTools][Options]', ...args),
+        error: (...args) => console.error('[GP-TimTools][Options]', ...args)
+    };
+
 // Main toggles
 const enableDragInTime = document.getElementById('enableDragInTime');
 const enableSmartArchiving = document.getElementById('enableSmartArchiving');
@@ -11,6 +20,7 @@ const enableDateSearch = document.getElementById('enableDateSearch');
 const enableUpButton = document.getElementById('enableUpButton');
 const enableDeleteShortcut = document.getElementById('enableDeleteShortcut');
 const enableCustomIconColors = document.getElementById('enableCustomIconColors');
+const enableDebugLogging = document.getElementById('enableDebugLogging');
 
 // Nested controls
 const upButtonClosePhoto = document.getElementById('upButtonClosePhoto');
@@ -44,7 +54,8 @@ const cards = {
     kmlExport: { toggle: enableKmlExport, card: document.getElementById('card-kmlExport') },
     dateSearch: { toggle: enableDateSearch, card: document.getElementById('card-dateSearch') },
     upButton: { toggle: enableUpButton, card: document.getElementById('card-upButton') },
-    deleteShortcut: { toggle: enableDeleteShortcut, card: document.getElementById('card-deleteShortcut') }
+    deleteShortcut: { toggle: enableDeleteShortcut, card: document.getElementById('card-deleteShortcut') },
+    debugLogging: { toggle: enableDebugLogging, card: document.getElementById('card-debugLogging') }
 };
 
 // Checkbox and text inputs requiring auto-save
@@ -56,6 +67,7 @@ const checkableInputs = [
     enableUpButton,
     enableDeleteShortcut,
     enableCustomIconColors,
+    enableDebugLogging,
     upButtonClosePhoto,
     kmlCreateSubfolder
 ].filter(Boolean);
@@ -137,7 +149,7 @@ function setSavingState(isSaving) {
 
 function restoreOptions() {
     if (!window.TimTools || !window.TimTools.Settings) {
-        console.error('[GP-TimTools] Settings module not loaded!');
+        logger.error('Settings module not loaded!');
         return;
     }
 
@@ -153,6 +165,7 @@ function restoreOptions() {
         if (enableUpButton) enableUpButton.checked = items.enableUpButton !== false;
         if (enableDeleteShortcut) enableDeleteShortcut.checked = items.enableDeleteShortcut !== false;
         if (enableCustomIconColors) enableCustomIconColors.checked = items.enableCustomIconColors === true;
+        if (enableDebugLogging) enableDebugLogging.checked = items.enableDebugLogging === true;
 
         if (upButtonClosePhoto) upButtonClosePhoto.checked = items.upButtonClosePhoto === true;
         if (kmlCreateSubfolder) kmlCreateSubfolder.checked = items.kmlCreateSubfolder !== false;
@@ -281,6 +294,7 @@ function saveOptions() {
         enableUpButton: enableUpButton ? enableUpButton.checked : true,
         enableDeleteShortcut: enableDeleteShortcut ? enableDeleteShortcut.checked : true,
         enableCustomIconColors: enableCustomIconColors ? enableCustomIconColors.checked : false,
+        enableDebugLogging: enableDebugLogging ? enableDebugLogging.checked : false,
         upButtonClosePhoto: upButtonClosePhoto ? upButtonClosePhoto.checked : false,
         kmlCreateSubfolder: kmlCreateSubfolder ? kmlCreateSubfolder.checked : true,
         kmlFolderName: kmlFolderName ? kmlFolderName.value : 'GooglePhotosExports',
@@ -304,7 +318,7 @@ async function initMobileBookmarklet() {
             bookmarkletCode = (await res.text()).trim();
         }
     } catch (e) {
-        console.warn('[GP-TimTools] Could not load mobile bookmarklet file:', e);
+        logger.warn('Could not load mobile bookmarklet file:', e);
     }
 
     if (dragLink && bookmarkletCode) {
@@ -362,7 +376,7 @@ async function initMobileBookmarklet() {
                         copyBtn.classList.remove('copied');
                     }, 2200);
                 } catch (err) {
-                    console.error('Failed to copy to clipboard:', err);
+                    logger.error('Failed to copy to clipboard:', err);
                 }
             }
         });

@@ -3,6 +3,12 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
 (function () {
+    const logger = window.TimTools.Logger ? window.TimTools.Logger.create('KmlExport') : {
+        log: (...args) => console.log('[GP-TimTools][KmlExport]', ...args),
+        warn: (...args) => console.warn('[GP-TimTools][KmlExport]', ...args),
+        error: (...args) => console.error('[GP-TimTools][KmlExport]', ...args)
+    };
+
     const INFO_BUTTON_SELECTOR = 'div[jscontroller="baFRdd"] button';
     const MAP_LINK_SELECTOR = 'a[jsname="ZOOy2"]';
     const FILENAME_CONTAINER_SELECTOR = 'div[jsname="AFXoCf"]';
@@ -10,32 +16,32 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
     const Extractor = {
         run: async function (masterId) {
-            console.log('[TimTools] KmlExport: Extraction Mode Started. MasterID:', masterId);
+            logger.log('Extraction Mode Started. MasterID:', masterId);
 
             const waitFor = window.TimTools.DOM.waitFor;
 
             try {
                 // 1. Wait for and Click Info Button
-                console.log('[TimTools] KmlExport: Waiting for info button:', INFO_BUTTON_SELECTOR);
+                logger.log('Waiting for info button:', INFO_BUTTON_SELECTOR);
                 const infoBtn = await waitFor(INFO_BUTTON_SELECTOR);
-                console.log('[TimTools] KmlExport: Info button found, checking map link...');
+                logger.log('Info button found, checking map link...');
 
                 let mapLink = document.querySelector(MAP_LINK_SELECTOR);
                 if (!mapLink) {
-                    console.log('[TimTools] KmlExport: Map link not found, clicking info button...');
+                    logger.log('Map link not found, clicking info button...');
                     infoBtn.click();
                     // Reduced timeout
                     try {
                         mapLink = await waitFor(MAP_LINK_SELECTOR, 4000);
                     } catch (e) {
-                        console.warn('[TimTools] KmlExport: Map link wait timeout.');
+                        logger.warn('Map link wait timeout.');
                     }
                 }
 
                 if (!mapLink) {
                     throw new Error('Map link not found (no geotag?)');
                 }
-                console.log('[TimTools] KmlExport: Map link found:', mapLink.href);
+                logger.log('Map link found:', mapLink.href);
 
                 // 2. Extract Data
                 const href = mapLink.href;
@@ -46,7 +52,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                 }
 
                 const coords = match[1];
-                console.log('[TimTools] KmlExport: Coords:', coords);
+                logger.log('Coords:', coords);
 
                 // Filename
                 let filename = 'Unknown';
@@ -57,7 +63,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                         if (nameDiv) filename = nameDiv.textContent.trim();
                     }
                 } catch (e) { }
-                console.log('[TimTools] KmlExport: Filename:', filename);
+                logger.log('Filename:', filename);
 
                 // Date
                 let timestamp = Date.now();
@@ -89,14 +95,14 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                         timestamp = this.parseFlexibleDate(dateStr, timeStr, zoneStr);
                     }
                 } catch (e) {
-                    console.warn('Date extraction failed', e);
+                    logger.warn('Date extraction failed', e);
                 }
-                console.log('[TimTools] KmlExport: Timestamp:', timestamp, new Date(timestamp));
+                logger.log('Timestamp:', timestamp, new Date(timestamp));
 
                 // 3. Send back
-                if (!masterId) console.warn('No masterId provided!');
+                if (!masterId) logger.warn('No masterId provided!');
 
-                console.log('[TimTools] KmlExport: Sending GP_KML_DATA to Master:', masterId);
+                logger.log('Sending GP_KML_DATA to Master:', masterId);
                 chrome.runtime.sendMessage({
                     type: 'GP_KML_DATA',
                     payload: {
@@ -108,14 +114,14 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                     }
                 }, (response) => {
                     if (chrome.runtime.lastError) {
-                        console.error('[TimTools] KmlExport: SendMessage Error:', chrome.runtime.lastError);
+                        logger.error('SendMessage Error:', chrome.runtime.lastError);
                     } else {
-                        console.log('[TimTools] KmlExport: Message sent. Response:', response);
+                        logger.log('Message sent. Response:', response);
                     }
                 });
 
             } catch (e) {
-                console.error('Extraction Error:', e);
+                logger.error('Extraction Error:', e);
                 chrome.runtime.sendMessage({
                     type: 'GP_KML_ERROR',
                     payload: e.message,

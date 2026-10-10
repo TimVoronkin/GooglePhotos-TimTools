@@ -17,15 +17,24 @@ window.TimTools = window.TimTools || {};
         appTheme: "dark",
         enableCustomIconColors: false,
         customIconColorDark: "#0B57D0",
-        customIconColorLight: "#A8C7FA"
+        customIconColorLight: "#A8C7FA",
+        enableDebugLogging: false
     };
+
+    const logger = (window.TimTools.Logger && window.TimTools.Logger.create)
+        ? window.TimTools.Logger.create('Settings')
+        : {
+            log: (...args) => console.log('[GP-TimTools][Settings]', ...args),
+            warn: (...args) => console.warn('[GP-TimTools][Settings]', ...args),
+            error: (...args) => console.error('[GP-TimTools][Settings]', ...args)
+        };
 
     window.TimTools.Settings = {
         get: function (keys) {
             return new Promise((resolve) => {
                 chrome.storage.sync.get(keys || DEFAULTS, (items) => {
                     if (chrome.runtime.lastError) {
-                        console.warn('[GP-TimTools] chrome.storage.sync.get warning:', chrome.runtime.lastError.message);
+                        logger.warn('chrome.storage.sync.get warning:', chrome.runtime.lastError.message);
                     }
                     // Merge with defaults to ensure all keys exist
                     resolve({ ...DEFAULTS, ...(items || {}) });
@@ -37,7 +46,7 @@ window.TimTools = window.TimTools || {};
             return new Promise((resolve) => {
                 chrome.storage.sync.set(items, () => {
                     if (chrome.runtime.lastError) {
-                        console.error('[GP-TimTools] chrome.storage.sync.set error:', chrome.runtime.lastError.message);
+                        logger.error('chrome.storage.sync.set error:', chrome.runtime.lastError.message);
                         resolve(false);
                     } else {
                         resolve(true);

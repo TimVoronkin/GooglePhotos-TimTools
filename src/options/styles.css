@@ -211,6 +211,11 @@ h1 {
     -webkit-mask-image: url('../../assets/active/palette.svg');
 }
 
+.icon-terminal {
+    mask-image: url('../../assets/active/terminal.svg');
+    -webkit-mask-image: url('../../assets/active/terminal.svg');
+}
+
 .card-title {
     font-size: 15px;
     font-weight: 500;

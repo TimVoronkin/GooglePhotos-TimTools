@@ -3,6 +3,14 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
 (function () {
+    const logger = (window.TimTools.Logger && window.TimTools.Logger.create)
+        ? window.TimTools.Logger.create('KmlExport')
+        : {
+            log: (...args) => console.log('[GP-TimTools][KmlExport]', ...args),
+            warn: (...args) => console.warn('[GP-TimTools][KmlExport]', ...args),
+            error: (...args) => console.error('[GP-TimTools][KmlExport]', ...args)
+        };
+
     // Selectors
     const TOOLBAR_ACTIONS_SELECTOR = 'div[jscontroller="MHDZYd"]';
     const TOOLBAR_SELECTOR = '.c9yG5b.txMZRd';
@@ -140,7 +148,7 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
                     const text = btn.innerText;
                     if (text === "Share" || label === "Share" || label === "Поділитися") {
                         targetContainer = btn.parentElement;
-                        console.log('[GP-TimTools] Found toolbar via Share button:', label);
+                        logger.log('Found toolbar via Share button:', label);
                         break;
                     }
                 }
@@ -181,11 +189,11 @@ window.TimTools.Modules.KmlExport = window.TimTools.Modules.KmlExport || {};
 
             container.appendChild(button);
             targetContainer.prepend(container);
-            console.log('[GP-TimTools] KML Export button injected.');
+            logger.log('KML Export button injected.');
         },
 
         showToast: function (msg) {
-            console.log(msg);
+            logger.log(msg);
         }
     };
 

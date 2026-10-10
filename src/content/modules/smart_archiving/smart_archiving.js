@@ -2,18 +2,22 @@ window.TimTools = window.TimTools || {};
 window.TimTools.Modules = window.TimTools.Modules || {};
 
 (function () {
-    const LOG_PREFIX = '[GP-TimTools][SmartArchiving]';
+    const logger = window.TimTools.Logger ? window.TimTools.Logger.create('SmartArchiving') : {
+        log: (...args) => console.log('[GP-TimTools][SmartArchiving]', ...args),
+        warn: (...args) => console.warn('[GP-TimTools][SmartArchiving]', ...args),
+        error: (...args) => console.error('[GP-TimTools][SmartArchiving]', ...args)
+    };
 
     function log(...args) {
-        console.log(LOG_PREFIX, ...args);
+        logger.log(...args);
     }
 
     function warn(...args) {
-        console.warn(LOG_PREFIX, ...args);
+        logger.warn(...args);
     }
 
     function error(...args) {
-        console.error(LOG_PREFIX, ...args);
+        logger.error(...args);
     }
 
     const SVG_FILTER_ICON = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M440-160q-17 0-28.5-11.5T400-200v-240L168-736q-15-20-4.5-42t36.5-22h560q26 0 36.5 22t-4.5 42L560-440v240q0 17-11.5 28.5T520-160h-80Zm40-308 198-252H282l198 252Zm0 0Z"/></svg>`;
