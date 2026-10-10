@@ -50,7 +50,8 @@
       "resources": [
         "assets/active/*",
         "src/options/options.html",
-        "src/content/modules/drag_in_time/templates/*"
+        "src/content/modules/drag_in_time/templates/*",
+        "src/content/modules/smart_archiving/mobile_bookmarklet.js"
       ],
       "matches": ["*://photos.google.com/*"]
     }

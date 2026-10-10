@@ -63,6 +63,33 @@
                 <p class="card-description">
                     Keep your main timeline clutter-free by auto-archiving photos from selected albums (like a custom filters) with one-click toggles.
                 </p>
+
+                <!-- Nested Sub-settings for Mobile Bookmarklet -->
+                <div class="nested-settings" id="smart-archiving-mobile-section">
+                    <div class="bookmarklet-header">
+                        <span class="bookmarklet-title">📱 Mobile Support (Bookmarklet)</span>
+                    </div>
+                    <p class="bookmarklet-desc">
+                        Run Smart Archiving directly from your smartphone's browser (Android / iOS) without installing mobile extensions.
+                    </p>
+
+                    <div class="bookmarklet-steps">
+                        <div class="bookmarklet-step"><b>1.</b> Drag the button below to your Bookmarks Bar (or click <i>Copy Code</i> and create a bookmark on your phone).</div>
+                        <div class="bookmarklet-step"><b>2.</b> Open <a href="https://photos.google.com" target="_blank" class="bookmarklet-link">photos.google.com</a> in your mobile browser.</div>
+                        <div class="bookmarklet-step"><b>3.</b> Type the bookmarklet name in the address bar and tap it to launch the filter manager.</div>
+                    </div>
+
+                    <div class="bookmarklet-actions">
+                        <button type="button" id="copyBookmarkletBtn" class="bookmarklet-action-btn primary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span>Copy Bookmarklet Code</span>
+                        </button>
+                        <a id="dragBookmarkletLink" href="#" class="bookmarklet-action-btn drag-pill" title="TimTools - Smart Archiving">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <span class="bookmarklet-drag-label">Drag to Bookmarks Bar</span>
+                        </a>
+                    </div>
+                </div>
             </section>
 
             <!-- 3. KML Geotag Export -->

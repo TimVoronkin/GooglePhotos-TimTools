@@ -1,4 +1,7 @@
-document.addEventListener('DOMContentLoaded', restoreOptions);
+document.addEventListener('DOMContentLoaded', () => {
+    restoreOptions();
+    initMobileBookmarklet();
+});
 
 // Main toggles
 const enableDragInTime = document.getElementById('enableDragInTime');
@@ -287,4 +290,81 @@ function saveOptions() {
     }).then(() => {
         setSavingState(false);
     });
+}
+
+async function initMobileBookmarklet() {
+    const dragLink = document.getElementById('dragBookmarkletLink');
+    const copyBtn = document.getElementById('copyBookmarkletBtn');
+
+    let bookmarkletCode = '';
+    try {
+        const fileUrl = chrome.runtime.getURL('src/content/modules/smart_archiving/mobile_bookmarklet.js');
+        const res = await fetch(fileUrl);
+        if (res.ok) {
+            bookmarkletCode = (await res.text()).trim();
+        }
+    } catch (e) {
+        console.warn('[GP-TimTools] Could not load mobile bookmarklet file:', e);
+    }
+
+    if (dragLink && bookmarkletCode) {
+        dragLink.href = bookmarkletCode;
+
+        const BOOKMARK_TITLE = 'TimTools - Smart Archiving';
+        const BUTTON_LABEL = 'Drag to Bookmarks Bar';
+
+        dragLink.title = BOOKMARK_TITLE;
+
+        const setDragTitle = () => {
+            const label = dragLink.querySelector('.bookmarklet-drag-label');
+            if (label) label.textContent = BOOKMARK_TITLE;
+        };
+
+        const resetLabel = () => {
+            const label = dragLink.querySelector('.bookmarklet-drag-label');
+            if (label) label.textContent = BUTTON_LABEL;
+        };
+
+        // Must change BEFORE drag initialization starts (pointerdown / mousedown)
+        dragLink.addEventListener('pointerdown', setDragTitle);
+        dragLink.addEventListener('mousedown', setDragTitle);
+
+        dragLink.addEventListener('dragstart', (e) => {
+            setDragTitle();
+            if (e.dataTransfer) {
+                try {
+                    e.dataTransfer.setData('text/plain', BOOKMARK_TITLE);
+                } catch (_) {}
+            }
+        });
+
+        dragLink.addEventListener('dragend', resetLabel);
+        dragLink.addEventListener('mouseup', resetLabel);
+
+        dragLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            resetLabel();
+            alert('To save this bookmarklet:\n\n1. Simply drag and drop this button onto your Chrome Bookmarks Bar (press Ctrl+Shift+B if the bar is hidden).\n\n2. Or click "Copy Bookmarklet Code" to copy the script and paste it into a new bookmark manually.');
+        });
+    }
+
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+            if (bookmarkletCode) {
+                try {
+                    await navigator.clipboard.writeText(bookmarkletCode);
+                    const span = copyBtn.querySelector('span');
+                    const origText = span ? span.textContent : copyBtn.textContent;
+                    if (span) span.textContent = 'Copied to clipboard!';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        if (span) span.textContent = origText;
+                        copyBtn.classList.remove('copied');
+                    }, 2200);
+                } catch (err) {
+                    console.error('Failed to copy to clipboard:', err);
+                }
+            }
+        });
+    }
 }
