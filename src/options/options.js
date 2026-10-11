@@ -19,6 +19,9 @@ const enableKmlExport = document.getElementById('enableKmlExport');
 const enableDateSearch = document.getElementById('enableDateSearch');
 const enableUpButton = document.getElementById('enableUpButton');
 const enableDeleteShortcut = document.getElementById('enableDeleteShortcut');
+const enableAlbumQuickRemove = document.getElementById('enableAlbumQuickRemove');
+const albumQuickRemoveConfirm = document.getElementById('albumQuickRemoveConfirm');
+const albumQuickRemoveSubSection = document.getElementById('album-quick-remove-sub-section');
 const enableCustomIconColors = document.getElementById('enableCustomIconColors');
 const enableDebugLogging = document.getElementById('enableDebugLogging');
 
@@ -55,6 +58,7 @@ const cards = {
     dateSearch: { toggle: enableDateSearch, card: document.getElementById('card-dateSearch') },
     upButton: { toggle: enableUpButton, card: document.getElementById('card-upButton') },
     deleteShortcut: { toggle: enableDeleteShortcut, card: document.getElementById('card-deleteShortcut') },
+    albumQuickRemove: { toggle: enableAlbumQuickRemove, card: document.getElementById('card-albumQuickRemove') },
     debugLogging: { toggle: enableDebugLogging, card: document.getElementById('card-debugLogging') }
 };
 
@@ -66,6 +70,8 @@ const checkableInputs = [
     enableDateSearch,
     enableUpButton,
     enableDeleteShortcut,
+    enableAlbumQuickRemove,
+    albumQuickRemoveConfirm,
     enableCustomIconColors,
     enableDebugLogging,
     upButtonClosePhoto,
@@ -164,6 +170,8 @@ function restoreOptions() {
         if (enableDateSearch) enableDateSearch.checked = items.enableDateSearch !== false;
         if (enableUpButton) enableUpButton.checked = items.enableUpButton !== false;
         if (enableDeleteShortcut) enableDeleteShortcut.checked = items.enableDeleteShortcut !== false;
+        if (enableAlbumQuickRemove) enableAlbumQuickRemove.checked = items.enableAlbumQuickRemove !== false;
+        if (albumQuickRemoveConfirm) albumQuickRemoveConfirm.checked = items.albumQuickRemoveConfirm !== false;
         if (enableCustomIconColors) enableCustomIconColors.checked = items.enableCustomIconColors === true;
         if (enableDebugLogging) enableDebugLogging.checked = items.enableDebugLogging === true;
 
@@ -260,7 +268,12 @@ function updateUI() {
         customColorsSubSection.style.display = enableCustomIconColors.checked ? 'block' : 'none';
     }
 
-    // 4. Update options page accent colors dynamically
+    // 4. Toggle Album Quick Remove sub-section visibility
+    if (albumQuickRemoveSubSection && enableAlbumQuickRemove) {
+        albumQuickRemoveSubSection.style.display = enableAlbumQuickRemove.checked ? 'block' : 'none';
+    }
+
+    // 5. Update options page accent colors dynamically
     applyOptionsTheme();
 }
 
@@ -293,6 +306,8 @@ function saveOptions() {
         enableDateSearch: enableDateSearch ? enableDateSearch.checked : true,
         enableUpButton: enableUpButton ? enableUpButton.checked : true,
         enableDeleteShortcut: enableDeleteShortcut ? enableDeleteShortcut.checked : true,
+        enableAlbumQuickRemove: enableAlbumQuickRemove ? enableAlbumQuickRemove.checked : true,
+        albumQuickRemoveConfirm: albumQuickRemoveConfirm ? albumQuickRemoveConfirm.checked : true,
         enableCustomIconColors: enableCustomIconColors ? enableCustomIconColors.checked : false,
         enableDebugLogging: enableDebugLogging ? enableDebugLogging.checked : false,
         upButtonClosePhoto: upButtonClosePhoto ? upButtonClosePhoto.checked : false,

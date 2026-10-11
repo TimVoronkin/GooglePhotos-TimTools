@@ -108,6 +108,15 @@ window.TimTools = window.TimTools || {};
                 logger.error('Smart Archiving module missing!');
             }
         }
+
+        if (settings.enableAlbumQuickRemove) {
+            if (Modules.AlbumQuickRemove) {
+                Modules.AlbumQuickRemove.init();
+                logger.log('Album Quick Remove module loaded.');
+            } else {
+                logger.error('Album Quick Remove module missing!');
+            }
+        }
     }
 
     function hexToRgba(hex, alpha) {
@@ -171,6 +180,12 @@ window.TimTools = window.TimTools || {};
         const kmlDarkColor = isCustom ? customLightAccent : GOOGLE_DARK_ACCENT;
 
         const upBtnColor = isCustom ? customLightAccent : '#FFFFFF';
+
+        // Album Quick Remove cross icon colors:
+        // When Override Accent Colors is OFF: Light = #444746, Dark = #C4C7C5
+        // When Override Accent Colors is ON: Light = customDarkAccent, Dark = customLightAccent
+        const aqrLightColor = isCustom ? customDarkAccent : '#444746';
+        const aqrDarkColor = isCustom ? customLightAccent : '#C4C7C5';
 
         let dragInTimeMenuRule = '';
         if (isCustom) {
@@ -289,6 +304,23 @@ window.TimTools = window.TimTools || {};
             html.gp-timtools-theme-dark #gp-smart-archive-btn svg path {
                 color: ${saDarkColor} !important;
                 fill: ${saDarkColor} !important;
+            }
+
+            /* 4. ALBUM QUICK REMOVE BUTTON COLORS */
+            html.gp-theme-light .gp-album-remove-btn,
+            html.gp-theme-light .gp-album-remove-btn svg,
+            html.gp-timtools-theme-light .gp-album-remove-btn,
+            html.gp-timtools-theme-light .gp-album-remove-btn svg {
+                color: ${aqrLightColor} !important;
+                stroke: ${aqrLightColor} !important;
+            }
+
+            html.gp-theme-dark .gp-album-remove-btn,
+            html.gp-theme-dark .gp-album-remove-btn svg,
+            html.gp-timtools-theme-dark .gp-album-remove-btn,
+            html.gp-timtools-theme-dark .gp-album-remove-btn svg {
+                color: ${aqrDarkColor} !important;
+                stroke: ${aqrDarkColor} !important;
             }
 
             /* Fallback toolbar colors before root class is attached */

@@ -216,6 +216,11 @@ h1 {
     -webkit-mask-image: url('../../assets/active/terminal.svg');
 }
 
+.icon-playlist-remove {
+    mask-image: url('../../assets/active/playlist-remove.svg');
+    -webkit-mask-image: url('../../assets/active/playlist-remove.svg');
+}
+
 .card-title {
     font-size: 15px;
     font-weight: 500;

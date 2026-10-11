@@ -1,0 +1,347 @@
+/* ===================================================
+   Google Photos TimTools - Album Quick Remove Styles
+   =================================================== */
+
+/* Container for album item in the Info panel */
+.gp-album-item-container {
+    position: relative !important;
+}
+
+/* Add padding to the album link so text never collides with the remove button */
+.gp-album-item-container > a.rugHuc {
+    padding-right: 58px !important;
+    transition: background-color 0.15s ease;
+}
+
+/* Quick remove button ("✕") aligned horizontally with Details pencil icon */
+.gp-album-remove-btn {
+    position: absolute;
+    right: 21px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #C4C7C5;
+    padding: 0;
+    margin: 0;
+    z-index: 5;
+    transition: background-color 0.18s ease, color 0.18s ease, stroke 0.18s ease, transform 0.15s ease, opacity 0.2s ease;
+    opacity: 0.9;
+}
+
+.gp-album-item-container:hover .gp-album-remove-btn,
+.gp-album-remove-btn:focus-visible {
+    opacity: 1;
+}
+
+.gp-album-remove-btn:hover {
+    background-color: rgba(234, 67, 53, 0.16);
+    color: #f28b82 !important;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.gp-album-remove-btn:hover svg {
+    stroke: #f28b82 !important;
+}
+
+.gp-album-remove-btn:active {
+    transform: translateY(-50%) scale(0.92);
+}
+
+.gp-album-remove-btn svg {
+    width: 17px;
+    height: 17px;
+    stroke: currentColor;
+    pointer-events: none;
+    display: block;
+}
+
+/* Light theme overrides (when Override Accent Colors is off) */
+html.gp-theme-light .gp-album-remove-btn,
+html.gp-timtools-theme-light .gp-album-remove-btn {
+    color: #444746;
+}
+
+html.gp-theme-light .gp-album-remove-btn svg,
+html.gp-timtools-theme-light .gp-album-remove-btn svg {
+    stroke: #444746;
+}
+
+html.gp-theme-light .gp-album-remove-btn:hover,
+html.gp-timtools-theme-light .gp-album-remove-btn:hover {
+    background-color: rgba(217, 48, 37, 0.12);
+    color: #d93025 !important;
+}
+
+html.gp-theme-light .gp-album-remove-btn:hover svg,
+html.gp-timtools-theme-light .gp-album-remove-btn:hover svg {
+    stroke: #d93025 !important;
+}
+
+/* Dark theme overrides (when Override Accent Colors is off) */
+html.gp-theme-dark .gp-album-remove-btn,
+html.gp-timtools-theme-dark .gp-album-remove-btn {
+    color: #C4C7C5;
+}
+
+html.gp-theme-dark .gp-album-remove-btn svg,
+html.gp-timtools-theme-dark .gp-album-remove-btn svg {
+    stroke: #C4C7C5;
+}
+
+/* Loading spinner inside button */
+.gp-album-remove-btn.is-loading {
+    cursor: wait;
+    pointer-events: none;
+    opacity: 1;
+}
+
+.gp-album-remove-btn.is-loading svg {
+    animation: gpAlbumSpin 0.75s linear infinite;
+}
+
+@keyframes gpAlbumSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Removal animation for <li> */
+.gp-album-removing {
+    overflow: hidden !important;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s ease-out,
+                transform 0.25s ease-out,
+                margin 0.3s ease !important;
+    max-height: 80px;
+}
+
+.gp-album-removing.is-hidden {
+    opacity: 0 !important;
+    max-height: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    transform: translateX(24px) !important;
+    pointer-events: none !important;
+}
+
+/* ===================================================
+   Confirmation Modal Dialog
+   =================================================== */
+
+.gp-album-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 2147483640;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    font-family: 'Google Sans', Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
+    animation: gpAlbumFadeIn 0.18s ease-out;
+    overscroll-behavior: contain;
+}
+
+@keyframes gpAlbumFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes gpAlbumPopIn {
+    from { opacity: 0; transform: scale(0.92) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.gp-album-modal-box {
+    background: #202124;
+    color: #e8eaed;
+    width: 90%;
+    max-width: 440px;
+    border-radius: 24px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    padding: 24px 24px 20px 24px;
+    display: flex;
+    flex-direction: column;
+    animation: gpAlbumPopIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-sizing: border-box;
+}
+
+html.gp-theme-light .gp-album-modal-box,
+html.gp-timtools-theme-light .gp-album-modal-box {
+    background: #ffffff;
+    color: #1f1f1f;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.gp-album-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.gp-album-modal-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(234, 67, 53, 0.16);
+    color: #f28b82;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+html.gp-theme-light .gp-album-modal-icon-wrapper,
+html.gp-timtools-theme-light .gp-album-modal-icon-wrapper {
+    background: rgba(217, 48, 37, 0.12);
+    color: #d93025;
+}
+
+.gp-album-modal-icon-wrapper svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
+
+.gp-album-modal-title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 500;
+    letter-spacing: -0.2px;
+}
+
+.gp-album-modal-body {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #9aa0a6;
+    margin-bottom: 24px;
+    padding-left: 2px;
+}
+
+html.gp-theme-light .gp-album-modal-body,
+html.gp-timtools-theme-light .gp-album-modal-body {
+    color: #5f6368;
+}
+
+.gp-album-modal-target-album {
+    color: #e8eaed;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+html.gp-theme-light .gp-album-modal-target-album,
+html.gp-timtools-theme-light .gp-album-modal-target-album {
+    color: #1f1f1f;
+}
+
+.gp-album-modal-subtext {
+    display: block;
+    font-size: 12px;
+    margin-top: 8px;
+    color: #80868b;
+}
+
+.gp-album-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.gp-album-modal-btn {
+    height: 38px;
+    padding: 0 20px;
+    border-radius: 19px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gp-album-modal-btn:active {
+    transform: scale(0.96);
+}
+
+.gp-album-modal-cancel-btn {
+    background: transparent;
+    color: #8ab4f8;
+}
+
+.gp-album-modal-cancel-btn:hover {
+    background: rgba(138, 180, 248, 0.1);
+}
+
+html.gp-theme-light .gp-album-modal-cancel-btn,
+html.gp-timtools-theme-light .gp-album-modal-cancel-btn {
+    color: #0b57d0;
+}
+
+html.gp-theme-light .gp-album-modal-cancel-btn:hover,
+html.gp-timtools-theme-light .gp-album-modal-cancel-btn:hover {
+    background: rgba(11, 87, 208, 0.08);
+}
+
+.gp-album-modal-confirm-btn {
+    background: #ea4335;
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.gp-album-modal-confirm-btn:hover {
+    background: #d93025;
+}
+
+/* Toast Notification */
+.gp-album-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    background: #303134;
+    color: #e8eaed;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 2147483645;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    animation: gpAlbumToastIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-family: 'Google Sans', Roboto, Helvetica, Arial, sans-serif;
+    pointer-events: none;
+}
+
+html.gp-theme-light .gp-album-toast,
+html.gp-timtools-theme-light .gp-album-toast {
+    background: #202124;
+    color: #ffffff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.gp-album-toast.is-leaving {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+@keyframes gpAlbumToastIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}

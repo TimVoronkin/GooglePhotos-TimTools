@@ -200,7 +200,37 @@
                 </p>
             </section>
 
-            <!-- 7. Theme & Accent Colors -->
+            <!-- 7. Quick Remove from Album -->
+            <section class="feature-card" id="card-albumQuickRemove">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="card-icon-wrapper" aria-hidden="true">
+                            <span class="card-icon icon-playlist-remove"></span>
+                        </div>
+                        <h2 class="card-title">Quick Remove from Album</h2>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enableAlbumQuickRemove">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="card-description">
+                    Adds ✕ button next to each album in the photo info panel to detach the current photo from that album instantly.
+                </p>
+
+                <!-- Nested Sub-settings for Album Quick Remove -->
+                <div class="nested-settings" id="album-quick-remove-sub-section">
+                    <div class="nested-row">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="albumQuickRemoveConfirm">
+                            <span class="checkbox-box"></span>
+                            <span class="checkbox-text">Ask for confirmation before removing from album</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 8. Theme & Accent Colors -->
             <section class="feature-card" id="card-themeAndColors">
                 <div class="card-header">
                     <div class="card-title-group">

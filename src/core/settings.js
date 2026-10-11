@@ -9,6 +9,8 @@ window.TimTools = window.TimTools || {};
         enableKmlExport: true,
         enableDragInTime: true,
         enableSmartArchiving: true,
+        enableAlbumQuickRemove: true,
+        albumQuickRemoveConfirm: true,
         smartArchivingFilters: [],
         smartArchivingFiltersByAccount: {},
         kmlCreateSubfolder: true,
