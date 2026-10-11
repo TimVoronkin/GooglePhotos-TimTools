@@ -1,7 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
+    updateManifestVersion();
     restoreOptions();
     initMobileBookmarklet();
 });
+
+function updateManifestVersion() {
+    try {
+        const versionEl = document.getElementById('appVersion') || document.querySelector('.version-tag');
+        if (versionEl && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+            const manifest = chrome.runtime.getManifest();
+            if (manifest && manifest.version) {
+                versionEl.textContent = `v${manifest.version}`;
+            }
+        }
+    } catch (e) {
+        logger.warn('Could not load version from manifest:', e);
+    }
+}
 
 // Logger helper for options page
 const logger = (window.TimTools && window.TimTools.Logger && window.TimTools.Logger.create)
@@ -230,6 +245,15 @@ function applyOptionsTheme() {
             vTag.style.color = lightColor;
             vTag.style.background = lightAlpha12;
         }
+
+        document.querySelectorAll('.intro-btn-icon').forEach(el => {
+            el.style.backgroundColor = lightColor;
+        });
+
+        document.querySelectorAll('.intro-btn-support').forEach(btn => {
+            btn.style.borderColor = hexToRgba(lightColor, 0.32);
+            btn.style.backgroundColor = hexToRgba(lightColor, 0.08);
+        });
     } else {
         document.documentElement.style.removeProperty('--accent-blue');
         document.documentElement.style.removeProperty('--accent-blue-hover');
@@ -247,6 +271,15 @@ function applyOptionsTheme() {
             vTag.style.color = '';
             vTag.style.background = '';
         }
+
+        document.querySelectorAll('.intro-btn-icon').forEach(el => {
+            el.style.backgroundColor = '';
+        });
+
+        document.querySelectorAll('.intro-btn-support').forEach(btn => {
+            btn.style.borderColor = '';
+            btn.style.backgroundColor = '';
+        });
     }
 }
 

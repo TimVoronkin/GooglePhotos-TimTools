@@ -109,6 +109,120 @@ h1 {
     color: #fbbc04;
 }
 
+/* App Overview & Project Links */
+.app-intro {
+    background: transparent;
+    border: none;
+    padding: 0 2px 4px 2px;
+    margin-bottom: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.intro-description {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+}
+
+.intro-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.intro-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-primary);
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.intro-btn-icon {
+    width: 15px;
+    height: 15px;
+    display: inline-block;
+    flex-shrink: 0;
+    background-color: var(--accent-blue);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.icon-btn-github {
+    mask-image: url('../../assets/active/logo_github.svg');
+    -webkit-mask-image: url('../../assets/active/logo_github.svg');
+}
+
+.icon-btn-email {
+    mask-image: url('../../assets/active/alternate-email.svg');
+    -webkit-mask-image: url('../../assets/active/alternate-email.svg');
+}
+
+.icon-btn-kofi {
+    mask-image: url('../../assets/active/logo_kofi.svg');
+    -webkit-mask-image: url('../../assets/active/logo_kofi.svg');
+}
+
+.intro-btn:hover {
+    border-color: var(--accent-blue);
+    background-color: var(--bg-card-hover);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+
+.intro-btn:hover .intro-btn-icon {
+    transform: scale(1.12);
+}
+
+.intro-btn:active {
+    transform: translateY(0);
+}
+
+.intro-btn-support {
+    background-color: rgba(138, 180, 248, 0.08);
+    border-color: rgba(138, 180, 248, 0.28);
+}
+
+.intro-btn-support:hover {
+    background-color: rgba(138, 180, 248, 0.16);
+    border-color: var(--accent-blue);
+}
+
+/* Section Header */
+.section-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-left: 2px;
+}
+
+.section-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary);
+}
+
 /* Feature List */
 .feature-list {
     display: flex;
