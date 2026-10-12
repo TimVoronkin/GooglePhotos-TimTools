@@ -17,13 +17,14 @@ _Interactive timeline canvas for visually reordering photo timestamps._
 
 ### 2. Smart Archiving
 
-_Category and visibility filters to keep your primary photostream clean and uncluttered._
+_Context-aware timeline filters to show or hide photo categories depending on who is watching._
 
-- **Album-as-a-Filter:** Designate specific albums (such as receipts, screenshots, documents, or private archives) as toggleable visibility filters.
-- **Header Popover:** Injects a sleek filter button directly in the main Google Photos navigation bar.
-- **Set Theory Logic:** If a photo belongs to multiple filter albums and at least one filter is switched Off, the photo is automatically archived.
-- **Fast Batch Sync:** Processes archive and unarchive operations in chunks of 50 photos via internal RPC (`w7TP3c`) with a real-time progress counter.
-- **Mobile Bookmarklet Support:** Includes a built-in bookmarklet generator allowing you to run Smart Archiving directly from mobile browsers (Android and iOS) without installing mobile extensions.
+- **Albums as Visibility Filters:** Create designated albums to act as on-demand visibility filters (e.g., _"Documents"_, _"Cringe Photos"_, _"Ex-Partner"_, or _"Receipts"_).
+- **1-Click Show / Hide Toggles:** A sleek filter button in the Google Photos navigation bar opens a popover where you can toggle filter albums on or off. Photos in toggled-off albums are instantly archived to keep your primary feed clean.
+- **Tailored for Social Browsing:** Showing your timeline to family, parents, or coworkers? Turn off sensitive filters to browse safely without awkward moments. Hanging out with a close friend? Restore your _"Cringe Photos"_ right back into your photostream with a single click!
+- **Non-Destructive & Reversible:** Photos are simply moved between your Library and Google Photos Archive (`/archive`), never permanently deleted.
+- **Set Theory Logic & Batch Sync:** If a photo belongs to multiple filter albums and at least one filter is switched Off, it remains safely archived. Syncs changes in rapid 50-photo batches via internal RPC (`w7TP3c`) with account-specific settings.
+- **Mobile Bookmarklet Support:** Includes a built-in bookmarklet generator to run your archiving filters on mobile browsers (Android and iOS).
 
 ### 3. KML Geotag Export
 

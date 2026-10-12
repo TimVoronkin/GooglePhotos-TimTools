@@ -96,32 +96,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
             const popup = document.createElement('div');
             popup.id = 'date-picker-popup';
-            Object.assign(popup.style, {
-                position: 'absolute', backgroundColor: '#1e1f20', boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
-                borderRadius: '8px', padding: '16px', fontFamily: 'Roboto, sans-serif', width: '250px', userSelect: 'none'
-            });
-
-            const style = document.createElement('style');
-            style.innerText = `
-                .dp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-                .dp-btn { background: none; border: none; cursor: pointer; padding: 4px 8px; font-weight: bold; border-radius: 4px; color: #e8eaed; }
-                .dp-btn:hover { background-color: rgba(255, 255, 255, 0.08); }
-                .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
-                .dp-day-header { font-size: 12px; color: #9aa0a6; padding: 4px 0; }
-                .dp-day { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; margin: 2px auto; cursor: pointer; border-radius: 50%; font-size: 13px; color: #e8eaed; }
-                .dp-day:hover { background-color: rgba(255, 255, 255, 0.08); }
-                .dp-day.selected { background-color: #8ab4f8; color: #202124; }
-                .dp-day.today { border: 1px solid #8ab4f8; box-sizing: border-box; }
-                .dp-day.empty { pointer-events: none; }
-                .dp-year-list { display: flex; flex-direction: column; gap: 2px; height: 230px; overflow-y: auto; padding-right: 4px; margin-top: 5px; }
-                .dp-year-list::-webkit-scrollbar { width: 6px; }
-                .dp-year-list::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.2); border-radius: 3px; }
-                .dp-year-item { padding: 8px 0; cursor: pointer; border-radius: 4px; color: #e8eaed; text-align: center; font-size: 14px; }
-                .dp-year-item:hover { background-color: rgba(255, 255, 255, 0.08); }
-                .dp-year-item.current { border: 1px solid #8ab4f8; box-sizing: border-box; }
-                .dp-year-item.selected { background-color: #424548; } 
-            `;
-            document.head.appendChild(style);
+            popup.className = 'gp-date-picker-popup';
 
             let currentMonth = new Date().getMonth();
             let currentYear = new Date().getFullYear();

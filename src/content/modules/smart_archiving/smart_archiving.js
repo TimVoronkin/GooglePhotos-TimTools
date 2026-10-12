@@ -88,51 +88,9 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
         // --- Session / RPC Helpers ---
         getWizGlobalData: function () {
-            if (this.cachedWizData && this.cachedWizData.at) {
-                return this.cachedWizData;
-            }
-
-            let at = null, fsid = null, bl = null, path = null, account = null;
-
-            if (typeof window !== 'undefined' && window.WIZ_global_data) {
-                const w = window.WIZ_global_data;
-                at = w.SNlM0e || null;
-                fsid = w.FdrFJe || null;
-                bl = w.cfb2h || null;
-                path = w.eptZe || null;
-                account = w.oPEP7c || w.S06Grb || null;
-            }
-
-            if (!at) {
-                try {
-                    const scripts = document.querySelectorAll('script');
-                    for (let s of scripts) {
-                        const content = s.textContent || '';
-                        if (content.includes('WIZ_global_data') || content.includes('SNlM0e')) {
-                            const atMatch = content.match(/"SNlM0e":"([^"]+)"/);
-                            const fsidMatch = content.match(/"FdrFJe":"([^"]+)"/);
-                            const blMatch = content.match(/"cfb2h":"([^"]+)"/);
-                            const pathMatch = content.match(/"eptZe":"([^"]+)"/);
-                            const accMatch = content.match(/"oPEP7c":"([^"]+)"/) || content.match(/"S06Grb":"([^"]+)"/);
-
-                            if (atMatch) at = atMatch[1];
-                            if (fsidMatch) fsid = fsidMatch[1];
-                            if (blMatch) bl = blMatch[1];
-                            if (pathMatch) path = pathMatch[1];
-                            if (accMatch) account = accMatch[1];
-                            if (at) break;
-                        }
-                    }
-                } catch (e) {
-                    warn('Error parsing script tags for WIZ_global_data:', e);
-                }
-            }
-
-            const res = { at, fsid, bl, path, account };
-            if (at) {
-                this.cachedWizData = res;
-            }
-            return res;
+            return (window.TimTools && window.TimTools.API)
+                ? window.TimTools.API.getSessionData()
+                : { at: null };
         },
 
         getAccountIdentifier: function () {
@@ -191,60 +149,11 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             log(`Saved ${this.filters.length} filters for account [${accountKey}].`);
         },
 
-        makeApiRequest: async function (rpcid, requestData) {
-            const wizData = this.getWizGlobalData();
-            if (!wizData || !wizData.at) {
-                throw new Error('Google Photos session token (XSRF / SNlM0e) not found. Please ensure you are logged into Google Photos.');
+        makeApiRequest: function (rpcid, requestData, sourcePath) {
+            if (window.TimTools && window.TimTools.API) {
+                return window.TimTools.API.makeRequest(rpcid, requestData, sourcePath);
             }
-
-            const wrappedData = [[[rpcid, JSON.stringify(requestData), null, 'generic']]];
-            const requestDataString = `f.req=${encodeURIComponent(JSON.stringify(wrappedData))}&at=${encodeURIComponent(wizData.at)}&`;
-            const params = {
-                rpcids: rpcid,
-                'source-path': window.location.pathname,
-                'f.sid': wizData.fsid || '',
-                bl: wizData.bl || '',
-                pageId: 'none',
-                rt: 'c',
-            };
-            const paramsString = Object.keys(params)
-                .map((key) => `${key}=${encodeURIComponent(params[key])}`)
-                .join('&');
-            const basePath = wizData.path || '/_/PhotosUi/';
-            const url = `https://photos.google.com${basePath}data/batchexecute?${paramsString}`;
-
-            const response = await fetch(url, {
-                headers: {
-                    'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                },
-                body: requestDataString,
-                method: 'POST',
-                credentials: 'include',
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status} ${response.statusText}`);
-            }
-
-            const responseBody = await response.text();
-            if (!responseBody) {
-                throw new Error('Empty response body from Google Photos server');
-            }
-
-            const jsonLines = responseBody.split('\n').filter((line) => line.includes('wrb.fr'));
-            if (jsonLines.length === 0) {
-                return null;
-            }
-
-            try {
-                const parsedData = JSON.parse(jsonLines[0]);
-                if (parsedData?.[0]?.[2]) {
-                    return JSON.parse(parsedData[0][2]);
-                }
-            } catch (e) {
-                warn(`Could not parse JSON payload from response line for [${rpcid}]:`, e);
-            }
-            return null;
+            throw new Error('window.TimTools.API is not available');
         },
 
         // Fetch all user albums using RPC Z5xsfc

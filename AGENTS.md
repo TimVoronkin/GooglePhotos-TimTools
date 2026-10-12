@@ -13,6 +13,7 @@ This document is the single source of truth for AI agents and human developers m
   - `window.TimTools.Settings` — Synchronized `chrome.storage.sync` settings wrapper.
   - `window.TimTools.DOM` — DOM manipulation & element creation helpers.
   - `window.TimTools.Theme` — Theme detector & manager (`dark` vs `light`).
+  - `window.TimTools.API` — Centralized Google Photos batchexecute RPC client & token extractor.
   - `window.TimTools.Modules` — Container for all feature modules (e.g. `UpButton`, `DateSearch`, `DragInTime`, `SmartArchiving`, `AlbumQuickRemove`).
 
 ---
@@ -77,8 +78,8 @@ enableMyFeature: true,
    Add a mask definition for the card icon:
    ```css
    .icon-my-feature {
-     mask-image: url("../../assets/active/my-icon.svg");
-     -webkit-mask-image: url("../../assets/active/my-icon.svg");
+     mask-image: url("../../assets/icons/my-icon.svg");
+     -webkit-mask-image: url("../../assets/icons/my-icon.svg");
    }
    ```
 3. **`src/options/options.js`:**
@@ -168,30 +169,8 @@ In `applyCustomIconColors(settings)`:
 ### D. Isolated Content Script World & Session Tokens
 
 - Content scripts run in an isolated execution world and **cannot** read `window.WIZ_global_data` directly.
-- **To extract session tokens (`SNlM0e`), parse `<script>` tags:**
-  ```javascript
-  function getWizGlobalData() {
-    let at = null,
-      fsid = null,
-      bl = null,
-      path = null;
-    for (const s of document.querySelectorAll("script")) {
-      const c = s.textContent || "";
-      if (c.includes("SNlM0e")) {
-        const atMatch = c.match(/"SNlM0e":"([^"]+)"/);
-        const fsidMatch = c.match(/"FdrFJe":"([^"]+)"/);
-        const blMatch = c.match(/"cfb2h":"([^"]+)"/);
-        const pathMatch = c.match(/"eptZe":"([^"]+)"/);
-        if (atMatch) at = atMatch[1];
-        if (fsidMatch) fsid = fsidMatch[1];
-        if (blMatch) bl = blMatch[1];
-        if (pathMatch) path = pathMatch[1];
-        if (at) break;
-      }
-    }
-    return { at, fsid, bl, path };
-  }
-  ```
+- **Centralized Helper:** Always use `window.TimTools.API.getSessionData()` or `window.TimTools.API.makeRequest(rpcid, data, sourcePath)` from `src/core/api.js`.
+- It automatically parses DOM `<script>` tags for `SNlM0e`, `FdrFJe`, `cfb2h`, `eptZe`, and caches them across calls.
 
 ---
 

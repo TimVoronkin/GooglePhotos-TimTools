@@ -1,20 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Google Photos Tim Tools",
-  "version": "0.7",
+  "version": "1.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArMTU1Z6Vr+M26gGI+sB+jtvho+NqibN9roLvAjFVTTpzWGjGoyM1Wtgh8kiqk93paMR6n2SRiaq3NHHLEjwtZJsf273auOy7OBfU6YIL7sYPNwF/WhNuf3B/qY6LUfQPGHccE9Ujw4pnJGwIUdf/f+Ts1iy8cuFR8GfXRcFYkzcHpfVhac4CJAa2suB7/lf4UyYBEMbGXhDBwo/byLSveE6lXRY5BnOICS/itZKZSqXI2qupE6neCfbcOIAex30a5cqmUEwbaAtQ0SeGnNWrL/6/N1HWfGrRLnxYlw2AudbT5p6wNErhYKUY+QNJDGorH8BoDXdBnMeaB/MzJe7XmwIDAQAB",
   "description": "Combined tools for Google Photos: Up Button, Date Search, Delete Shortcut, KML Export, Drag in Time & Smart Archiving",
   "icons": {
-    "16": "assets/active/logo-16.png",
-    "48": "assets/active/logo-48.png",
-    "128": "assets/active/logo-128.png"
+    "16": "assets/logo/logo-16.png",
+    "48": "assets/logo/logo-48.png",
+    "128": "assets/logo/logo-128.png"
   },
   "permissions": ["storage", "downloads", "clipboardWrite"],
   "action": {
     "default_icon": {
-      "16": "assets/active/logo-16.png",
-      "48": "assets/active/logo-48.png",
-      "128": "assets/active/logo-128.png"
+      "16": "assets/logo/logo-16.png",
+      "48": "assets/logo/logo-48.png",
+      "128": "assets/logo/logo-128.png"
     }
   },
   "options_ui": {
@@ -32,9 +32,10 @@
         "src/core/settings.js",
         "src/core/dom_utils.js",
         "src/core/theme.js",
-        "src/content/modules/up_button.js",
-        "src/content/modules/date_search.js",
-        "src/content/modules/delete_shortcut.js",
+        "src/core/api.js",
+        "src/content/modules/up_button/up_button.js",
+        "src/content/modules/date_search/date_search.js",
+        "src/content/modules/delete_shortcut/delete_shortcut.js",
         "src/content/modules/kml_export/ui.js",
         "src/content/modules/kml_export/extractor.js",
         "src/content/modules/kml_export/generator.js",
@@ -42,13 +43,15 @@
         "src/content/modules/drag_in_time/templates/modal.js",
         "src/content/modules/drag_in_time/templates/card.js",
         "src/content/modules/drag_in_time/templates/confirm_dialog.js",
-        "src/content/modules/drag_in_time.js",
+        "src/content/modules/drag_in_time/drag_in_time.js",
         "src/content/modules/smart_archiving/smart_archiving.js",
         "src/content/modules/album_quick_remove/album_quick_remove.js",
         "src/content/main.js"
       ],
       "css": [
         "src/content/styles.css",
+        "src/content/modules/up_button/up_button.css",
+        "src/content/modules/date_search/date_search.css",
         "src/content/modules/drag_in_time/styles.css",
         "src/content/modules/smart_archiving/smart_archiving.css",
         "src/content/modules/album_quick_remove/album_quick_remove.css"
@@ -59,7 +62,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "assets/active/*",
+        "assets/icons/*",
+        "assets/logo/*",
         "src/content/modules/drag_in_time/templates/*",
         "src/content/modules/smart_archiving/mobile_bookmarklet.js"
       ],

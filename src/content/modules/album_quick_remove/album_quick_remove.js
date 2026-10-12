@@ -351,112 +351,17 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         },
 
         getWizGlobalData: function () {
-            if (this._cachedWizData && this._cachedWizData.at) {
-                return this._cachedWizData;
-            }
-
-            let at = null, fsid = null, bl = null, path = null;
-            if (typeof window !== 'undefined' && window.WIZ_global_data) {
-                const w = window.WIZ_global_data;
-                at = w.SNlM0e;
-                fsid = w.FdrFJe;
-                bl = w.cfb2h;
-                path = w.eptZe;
-            }
-
-            if (!at) {
-                try {
-                    const scripts = document.querySelectorAll('script');
-                    for (const s of scripts) {
-                        const content = s.textContent || '';
-                        if (content.includes('SNlM0e')) {
-                            const atMatch = content.match(/"SNlM0e":"([^"]+)"/);
-                            const fsidMatch = content.match(/"FdrFJe":"([^"]+)"/);
-                            const blMatch = content.match(/"cfb2h":"([^"]+)"/);
-                            const pathMatch = content.match(/"eptZe":"([^"]+)"/);
-
-                            if (atMatch) at = atMatch[1];
-                            if (fsidMatch) fsid = fsidMatch[1];
-                            if (blMatch) bl = blMatch[1];
-                            if (pathMatch) path = pathMatch[1];
-                            if (at) break;
-                        }
-                    }
-                } catch (e) {
-                    logger.warn('Error reading WIZ_global_data scripts:', e);
-                }
-            }
-
-            const res = { at, fsid, bl, path };
-            if (at) {
-                this._cachedWizData = res;
-            }
-            return res;
+            return (window.TimTools && window.TimTools.API)
+                ? window.TimTools.API.getSessionData()
+                : { at: null };
         },
 
         // Universal batchexecute RPC caller
-        makeApiRequest: async function (rpcid, requestData, sourcePath) {
-            const wizData = this.getWizGlobalData();
-            if (!wizData || !wizData.at) {
-                throw new Error('Google Photos session token (SNlM0e) not found. Please ensure you are logged into Google Photos.');
+        makeApiRequest: function (rpcid, requestData, sourcePath) {
+            if (window.TimTools && window.TimTools.API) {
+                return window.TimTools.API.makeRequest(rpcid, requestData, sourcePath);
             }
-
-            const wrappedData = [[[rpcid, JSON.stringify(requestData), null, 'generic']]];
-            const requestDataString = `f.req=${encodeURIComponent(JSON.stringify(wrappedData))}&at=${encodeURIComponent(wizData.at)}&`;
-
-            const params = {
-                rpcids: rpcid,
-                'source-path': sourcePath || window.location.pathname,
-                'f.sid': wizData.fsid || '',
-                bl: wizData.bl || '',
-                hl: 'en',
-                'soc-app': '165',
-                'soc-platform': '1',
-                'soc-device': '1',
-                pageId: 'none',
-                rt: 'c'
-            };
-
-            const paramsString = Object.keys(params)
-                .map((key) => `${key}=${encodeURIComponent(params[key])}`)
-                .join('&');
-
-            const basePath = wizData.path || '/_/PhotosUi/';
-            const url = `https://photos.google.com${basePath}data/batchexecute?${paramsString}`;
-
-            const response = await fetch(url, {
-                headers: {
-                    'content-type': 'application/x-www-form-urlencoded;charset=UTF-8'
-                },
-                body: requestDataString,
-                method: 'POST',
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status} ${response.statusText}`);
-            }
-
-            const responseBody = await response.text();
-            if (!responseBody) {
-                throw new Error('Empty response body received from Google Photos');
-            }
-
-            const jsonLines = responseBody.split('\n').filter((line) => line.includes('wrb.fr'));
-            if (jsonLines.length === 0) {
-                logger.warn(`No wrb.fr payload line found in response for [${rpcid}]`);
-                return null;
-            }
-
-            try {
-                const parsedData = JSON.parse(jsonLines[0]);
-                if (parsedData?.[0]?.[2]) {
-                    return JSON.parse(parsedData[0][2]);
-                }
-            } catch (e) {
-                logger.warn(`Could not parse JSON payload from response line for [${rpcid}]:`, e);
-            }
-            return null;
+            throw new Error('window.TimTools.API is not available');
         },
 
         // Resolve the specific item ID inside the album (item[0]) corresponding to the photo

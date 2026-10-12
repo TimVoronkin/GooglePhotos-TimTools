@@ -677,9 +677,49 @@
     gap: 8px;
 }
 
-.gp-modal-back-btn {
-    background: transparent;
+.gp-selected-badge {
+    background: rgba(138, 180, 248, 0.15);
     color: #8ab4f8;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+    font-size: 11px;
+}
+
+.gp-modified-badge {
+    background: rgba(138, 180, 248, 0.15);
+    color: #8ab4f8;
+    border: 1px solid rgba(138, 180, 248, 0.3);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.gp-confirm-arrow,
+.gp-confirm-arrow-col {
+    color: #8ab4f8;
+}
+
+.gp-confirm-new-box {
+    background: rgba(138, 180, 248, 0.08);
+    border: 1px solid rgba(138, 180, 248, 0.25);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-family: 'Roboto Mono', monospace, sans-serif;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.gp-diff-highlight {
+    color: #8ab4f8;
+}
+
+.gp-modal-back-btn,
+.gp-confirm-cancel-btn {
+    background: transparent;
+    color: var(--gp-active-accent, #8ab4f8);
     border: 1px solid #5f6368;
     border-radius: 20px;
     padding: 0 24px;
@@ -690,12 +730,14 @@
     transition: background-color 0.15s, border-color 0.15s;
 }
 
-.gp-modal-back-btn:hover {
-    background: rgba(138, 180, 248, 0.08);
+.gp-modal-back-btn:hover,
+.gp-confirm-cancel-btn:hover {
+    background: var(--gp-active-accent-12, rgba(138, 180, 248, 0.08));
 }
 
-.gp-modal-save-btn {
-    background-color: #8ab4f8;
+.gp-modal-save-btn,
+.gp-confirm-save-btn {
+    background-color: var(--gp-active-accent, #8ab4f8);
     color: #202124;
     border: none;
     border-radius: 20px;
@@ -708,7 +750,8 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-.gp-modal-save-btn:hover {
+.gp-modal-save-btn:hover,
+.gp-confirm-save-btn:hover {
     background-color: #aecbfa;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
@@ -826,6 +869,31 @@
     color: #5f6368;
 }
 
+.gp-theme-light .gp-selected-badge {
+    background: rgba(26, 115, 232, 0.12);
+    color: #1a73e8;
+}
+
+.gp-theme-light .gp-modified-badge {
+    background: rgba(26, 115, 232, 0.12);
+    color: #1a73e8;
+    border-color: rgba(26, 115, 232, 0.3);
+}
+
+.gp-theme-light .gp-confirm-arrow,
+.gp-theme-light .gp-confirm-arrow-col {
+    color: #1a73e8;
+}
+
+.gp-theme-light .gp-confirm-new-box {
+    background: rgba(26, 115, 232, 0.08);
+    border-color: rgba(26, 115, 232, 0.25);
+}
+
+.gp-theme-light .gp-diff-highlight {
+    color: #1a73e8;
+}
+
 .gp-theme-light .gp-confirm-dialog-header {
     background: #ffffff;
     border-bottom: 1px solid #e0e0e0;
@@ -896,3 +964,27 @@
     color: #8ab4f8;
     fill: #8ab4f8;
 }
+
+.gp-theme-light .gp-modal-back-btn,
+.gp-theme-light .gp-confirm-cancel-btn {
+    border-color: #dadce0;
+    color: var(--gp-active-accent, #1a73e8);
+}
+
+.gp-theme-light .gp-modal-back-btn:hover,
+.gp-theme-light .gp-confirm-cancel-btn:hover {
+    background: var(--gp-active-accent-12, #e8f0fe);
+}
+
+.gp-theme-light .gp-modal-save-btn,
+.gp-theme-light .gp-confirm-save-btn {
+    background-color: var(--gp-active-accent, #1a73e8);
+    color: #ffffff;
+}
+
+.gp-theme-light .gp-modal-save-btn:hover,
+.gp-theme-light .gp-confirm-save-btn:hover {
+    background-color: var(--gp-active-accent, #1765cc);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+

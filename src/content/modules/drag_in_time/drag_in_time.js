@@ -567,23 +567,17 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 }
             }
 
-            // Aspect ratio calculation
-            let aspectRatio = 1;
+            // Aspect ratio calculation (safe, no synchronous layout reflow)
+            let aspectRatio = isVideo ? (16 / 9) : 1;
             if (cardEl) {
                 const img = cardEl.querySelector('img');
                 if (img && img.naturalWidth && img.naturalHeight) {
                     aspectRatio = img.naturalWidth / img.naturalHeight;
-                } else if (cardEl.offsetWidth && cardEl.offsetHeight) {
-                    aspectRatio = cardEl.offsetWidth / cardEl.offsetHeight;
-                } else {
-                    const rect = cardEl.getBoundingClientRect();
-                    if (rect.width > 0 && rect.height > 0) {
-                        aspectRatio = rect.width / rect.height;
-                    }
+                } else if (cardEl.style && cardEl.style.width && cardEl.style.height) {
+                    const sw = parseFloat(cardEl.style.width);
+                    const sh = parseFloat(cardEl.style.height);
+                    if (sw > 0 && sh > 0) aspectRatio = sw / sh;
                 }
-            }
-            if (isVideo && (!aspectRatio || aspectRatio === 1)) {
-                aspectRatio = 16 / 9;
             }
 
             const isSelected = cardEl.classList.contains('R1sU4e') ||
@@ -681,6 +675,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             this.modifiedTimestamps.clear();
             this.hasReachedOldestEnd = false;
             this.hasReachedNewestEnd = false;
+            this.newerSearchStepDays = 30;
             this.isAlbumContextMode = false;
             this.libraryNextPageOlderToken = null;
 
@@ -968,6 +963,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const modalBody = overlay.querySelector('.gp-drag-modal-body');
 
             if (modalBody) {
+                let autoScrollTimer = null;
                 const checkAutoScroll = () => {
                     if (this.isLoadingMore || this.isDragging) return;
 
@@ -980,18 +976,27 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                         this.loadMorePhotos('older');
                     }
                     // 2. Approaching top (within 150px) and not already at newest -> load newer photos automatically!
-                    else if (scrollTop <= 150 && !this.hasReachedNewestEnd && !this.checkIfAtNewestPhotos()) {
+                    else if (scrollTop <= 150 && !this.hasReachedNewestEnd) {
                         const prevScrollHeight = modalBody.scrollHeight;
+                        const prevScrollTop = modalBody.scrollTop;
                         this.loadMorePhotos('newer', (count) => {
                             if (count > 0 && modalBody) {
                                 const newScrollHeight = modalBody.scrollHeight;
-                                modalBody.scrollTop = scrollTop + (newScrollHeight - prevScrollHeight);
+                                modalBody.scrollTop = prevScrollTop + (newScrollHeight - prevScrollHeight);
                             }
                         });
                     }
                 };
 
-                modalBody.addEventListener('scroll', checkAutoScroll, { passive: true });
+                const scheduleCheck = () => {
+                    if (autoScrollTimer) return;
+                    autoScrollTimer = setTimeout(() => {
+                        autoScrollTimer = null;
+                        checkAutoScroll();
+                    }, 120);
+                };
+
+                modalBody.addEventListener('scroll', scheduleCheck, { passive: true });
 
                 // Also listen to wheel events so that when the user is at the very bottom or top,
                 // attempting to scroll further still triggers loadMorePhotos even if scrollTop doesn't change
@@ -1003,15 +1008,9 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     const clientHeight = modalBody.clientHeight;
 
                     if (e.deltaY > 0 && !this.hasReachedOldestEnd && (scrollTop + clientHeight >= scrollHeight - 120)) {
-                        this.loadMorePhotos('older');
-                    } else if (e.deltaY < 0 && !this.hasReachedNewestEnd && scrollTop <= 120 && !this.checkIfAtNewestPhotos()) {
-                        const prevScrollHeight = modalBody.scrollHeight;
-                        this.loadMorePhotos('newer', (count) => {
-                            if (count > 0 && modalBody) {
-                                const newScrollHeight = modalBody.scrollHeight;
-                                modalBody.scrollTop = scrollTop + (newScrollHeight - prevScrollHeight);
-                            }
-                        });
+                        scheduleCheck();
+                    } else if (e.deltaY < 0 && !this.hasReachedNewestEnd && scrollTop <= 120) {
+                        scheduleCheck();
                     }
                 }, { passive: true });
             }
@@ -1737,161 +1736,15 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 log(`[Auto-Scroll] Instantly added ${addedCount} ${direction} photos from available DOM cards.`);
                 this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
                 this.renderModalPhotos();
+                this.updateModifiedCounter();
                 this.isLoadingMore = false;
                 if (onComplete) onComplete(addedCount);
                 return;
             }
 
-            // 2. No cached DOM cards -> Trigger Google Photos' virtual scroller to load fresh batch from servers
-            log(`[Auto-Scroll] No cached DOM cards. Scrolling background page to trigger Google Photos virtualizer...`);
-            this.showStreamLoadingIndicator(direction, true);
-
-            // Collect all scroll targets for the background Google Photos photostream
-            const allMainCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR));
-            const edgeCard = (direction === 'older') ? allMainCards[allMainCards.length - 1] : allMainCards[0];
-            const scrollTargets = [];
-
-            if (edgeCard) {
-                let p = edgeCard.parentElement;
-                while (p && p !== document.body && p !== document.documentElement) {
-                    if (p.scrollHeight > p.clientHeight || window.getComputedStyle(p).overflowY !== 'visible') {
-                        scrollTargets.push(p);
-                    }
-                    p = p.parentElement;
-                }
-            }
-            scrollTargets.push(window);
-            if (document.scrollingElement) scrollTargets.push(document.scrollingElement);
-            if (document.documentElement) scrollTargets.push(document.documentElement);
-
-            const triggerScrollNudge = () => {
-                if (edgeCard) {
-                    try {
-                        edgeCard.scrollIntoView({ behavior: 'auto', block: direction === 'older' ? 'end' : 'start' });
-                    } catch (e) {}
-                }
-                const delta = direction === 'older' ? 3200 : -3200;
-                scrollTargets.forEach(target => {
-                    try {
-                        if (target.scrollBy) {
-                            target.scrollBy(0, delta);
-                        } else if (target.scrollTop !== undefined) {
-                            target.scrollTop += delta;
-                        }
-                        target.dispatchEvent(new Event('scroll', { bubbles: true }));
-                        target.dispatchEvent(new WheelEvent('wheel', {
-                            deltaY: delta > 0 ? 1200 : -1200,
-                            deltaMode: 0,
-                            bubbles: true,
-                            cancelable: true,
-                            view: window
-                        }));
-                    } catch (e) {}
-                });
-
-                try {
-                    window.dispatchEvent(new Event('scroll', { bubbles: true }));
-                    document.dispatchEvent(new Event('scroll', { bubbles: true }));
-                    const key = direction === 'older' ? 'PageDown' : 'PageUp';
-                    const keyCode = direction === 'older' ? 34 : 33;
-                    const keyEvent = new KeyboardEvent('keydown', {
-                        key: key,
-                        code: key,
-                        keyCode: keyCode,
-                        which: keyCode,
-                        bubbles: true,
-                        cancelable: true
-                    });
-                    document.dispatchEvent(keyEvent);
-                    window.dispatchEvent(keyEvent);
-                } catch (e) {}
-            };
-
-            // Fire initial nudge immediately
-            triggerScrollNudge();
-
-            let finished = false;
-            let observer = null;
-            let pollTimer = null;
-            let timeoutTimer = null;
-
-            const finish = (newPhotos) => {
-                if (finished) return;
-                finished = true;
-                if (observer) {
-                    observer.disconnect();
-                    observer = null;
-                }
-                if (pollTimer) {
-                    clearInterval(pollTimer);
-                    pollTimer = null;
-                }
-                if (timeoutTimer) {
-                    clearTimeout(timeoutTimer);
-                    timeoutTimer = null;
-                }
-
-                this.showStreamLoadingIndicator(direction, false);
-                this.isLoadingMore = false;
-
-                if (newPhotos && newPhotos.length > 0) {
-                    let reallyAdded = 0;
-                    newPhotos.forEach(p => {
-                        if (!currentKeys.has(p.mediaKey)) {
-                            this.photos.push(p);
-                            currentKeys.add(p.mediaKey);
-                            reallyAdded++;
-                        }
-                    });
-
-                    if (reallyAdded > 0) {
-                        log(`[Auto-Scroll] Fetched and rendered ${reallyAdded} more ${direction} photos.`);
-                        this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-                        this.renderModalPhotos();
-                        if (onComplete) onComplete(reallyAdded);
-                        return;
-                    }
-                }
-
-                if (direction === 'older') this.hasReachedOldestEnd = true;
-                if (direction === 'newer') this.hasReachedNewestEnd = true;
-                log(`[Auto-Scroll] No further ${direction} photos returned from Google Photos.`);
-                if (onComplete) onComplete(0);
-            };
-
-            const checkForNewCards = () => {
-                const freshCards = Array.from(document.querySelectorAll(ALL_PHOTO_CARDS_SELECTOR));
-                const newFound = [];
-                freshCards.forEach((el, i) => {
-                    const info = this.extractCardInfo(el, i);
-                    if (info && info.mediaKey && !currentKeys.has(info.mediaKey)) {
-                        newFound.push(info);
-                    }
-                });
-                if (newFound.length > 0) {
-                    finish(newFound);
-                    return true;
-                }
-                return false;
-            };
-
-            // 1. Observe DOM mutations for instant response when Google Photos renders new photo cards
-            observer = new MutationObserver(() => {
-                checkForNewCards();
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-
-            // 2. Periodic check and nudge every 350ms
-            pollTimer = setInterval(() => {
-                if (checkForNewCards()) return;
-                triggerScrollNudge();
-            }, 350);
-
-            // 3. Max safety timeout (5500ms)
-            timeoutTimer = setTimeout(() => {
-                checkForNewCards();
-                finish([]);
-            }, 5500);
+            // 2. No cached DOM cards -> Load next batch directly from Google Photos API (lcxiM RPC)
+            log(`[Auto-Scroll] No cached DOM cards. Fetching ${direction} photos directly via Library API...`);
+            this.loadMoreLibraryPhotos(direction, onComplete);
         },
 
         loadMoreLibraryPhotos: async function (direction, onComplete) {
@@ -1910,66 +1763,127 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                     return;
                 }
 
-                let requestData = null;
+                let added = 0;
+
                 if (direction === 'older') {
+                    let requestData = null;
                     if (this.libraryNextPageOlderToken) {
                         requestData = [this.libraryNextPageOlderToken, null, 60, null, 1, 1];
                     } else {
                         const oldestTimestamp = this.photos.length > 0 ? this.photos[this.photos.length - 1].timestamp.getTime() : Date.now();
                         requestData = [null, oldestTimestamp, 60, null, 1, 1];
                     }
-                } else {
-                    const newestTimestamp = this.photos.length > 0 ? this.photos[0].timestamp.getTime() : Date.now();
-                    requestData = [null, newestTimestamp + (14 * 24 * 60 * 60 * 1000), 60, null, 1, 1];
-                }
 
-                const res = await this.makeApiRequest('lcxiM', requestData, wizData);
-                if (res && Array.isArray(res[0]) && res[0].length > 0) {
-                    const rawItems = res[0];
-                    const existingKeys = new Set(this.photos.map(p => p.mediaKey).filter(Boolean));
-                    const existingFingerprints = new Set(
-                        this.photos.map(p => this.getThumbFingerprint(p.bgUrl)).filter(fp => fp && fp.length > 15)
-                    );
-                    let added = 0;
+                    const res = await this.makeApiRequest('lcxiM', requestData, wizData);
+                    if (res && Array.isArray(res[0]) && res[0].length > 0) {
+                        const rawItems = res[0];
+                        const existingKeys = new Set(this.photos.map(p => p.mediaKey).filter(Boolean));
+                        const existingFingerprints = new Set(
+                            this.photos.map(p => this.getThumbFingerprint(p.bgUrl)).filter(fp => fp && fp.length > 15)
+                        );
 
-                    for (const item of rawItems) {
-                        const parsed = this.parseLibraryItem(item);
-                        if (!parsed) continue;
+                        for (const item of rawItems) {
+                            const parsed = this.parseLibraryItem(item);
+                            if (!parsed) continue;
 
-                        const fp = this.getThumbFingerprint(parsed.bgUrl);
-                        const isDuplicate = 
-                            existingKeys.has(parsed.mediaKey) ||
-                            (this.albumPhotoKeys && this.albumPhotoKeys.has(parsed.mediaKey)) ||
-                            (this.albumDedupKeys && parsed.dedupKey && this.albumDedupKeys.has(parsed.dedupKey)) ||
-                            (fp && existingFingerprints.has(fp));
+                            const fp = this.getThumbFingerprint(parsed.bgUrl);
+                            const isDuplicate = 
+                                existingKeys.has(parsed.mediaKey) ||
+                                (this.albumPhotoKeys && this.albumPhotoKeys.has(parsed.mediaKey)) ||
+                                (this.albumDedupKeys && parsed.dedupKey && this.albumDedupKeys.has(parsed.dedupKey)) ||
+                                (fp && existingFingerprints.has(fp));
 
-                        if (!isDuplicate) {
-                            this.photos.push(parsed);
-                            existingKeys.add(parsed.mediaKey);
-                            if (fp) existingFingerprints.add(fp);
-                            added++;
-                        } else {
-                            log(`[API Context] Filtered duplicate item from Library: ${parsed.mediaKey}`);
+                            if (!isDuplicate) {
+                                this.photos.push(parsed);
+                                existingKeys.add(parsed.mediaKey);
+                                if (fp) existingFingerprints.add(fp);
+                                added++;
+                            }
                         }
-                    }
 
-                    if (direction === 'older') {
                         if (res[1]) this.libraryNextPageOlderToken = res[1];
                         if (added === 0) this.hasReachedOldestEnd = true;
                     } else {
-                        if (added === 0) this.hasReachedNewestEnd = true;
+                        this.hasReachedOldestEnd = true;
+                    }
+                } else {
+                    // direction === 'newer'
+                    const newestTimestamp = this.photos.length > 0 ? this.photos[0].timestamp.getTime() : Date.now();
+                    const now = Date.now() + 86400000; // allow up to tomorrow
+
+                    if (newestTimestamp >= Date.now()) {
+                        log('[API Context] Current newest photo is already at or beyond today.');
+                        this.hasReachedNewestEnd = true;
+                        this.isLoadingMore = false;
+                        this.showStreamLoadingIndicator(direction, false);
+                        if (onComplete) onComplete(0);
+                        return;
                     }
 
+                    let stepDays = this.newerSearchStepDays || 30;
+                    let attempts = 0;
+
+                    while (added === 0 && attempts < 4) {
+                        attempts++;
+                        let targetTimestamp = newestTimestamp + (stepDays * 24 * 60 * 60 * 1000);
+                        if (targetTimestamp > now) {
+                            targetTimestamp = now;
+                        }
+
+                        const requestData = [null, targetTimestamp, 80, null, 1, 1];
+                        const res = await this.makeApiRequest('lcxiM', requestData, wizData);
+
+                        if (res && Array.isArray(res[0]) && res[0].length > 0) {
+                            const rawItems = res[0];
+                            const existingKeys = new Set(this.photos.map(p => p.mediaKey).filter(Boolean));
+                            const existingFingerprints = new Set(
+                                this.photos.map(p => this.getThumbFingerprint(p.bgUrl)).filter(fp => fp && fp.length > 15)
+                            );
+
+                            for (const item of rawItems) {
+                                const parsed = this.parseLibraryItem(item);
+                                if (!parsed) continue;
+
+                                const fp = this.getThumbFingerprint(parsed.bgUrl);
+                                const isDuplicate = 
+                                    existingKeys.has(parsed.mediaKey) ||
+                                    (this.albumPhotoKeys && this.albumPhotoKeys.has(parsed.mediaKey)) ||
+                                    (this.albumDedupKeys && parsed.dedupKey && this.albumDedupKeys.has(parsed.dedupKey)) ||
+                                    (fp && existingFingerprints.has(fp));
+
+                                if (!isDuplicate) {
+                                    this.photos.push(parsed);
+                                    existingKeys.add(parsed.mediaKey);
+                                    if (fp) existingFingerprints.add(fp);
+                                    added++;
+                                }
+                            }
+                        }
+
+                        if (added > 0) {
+                            this.newerSearchStepDays = 30;
+                            break;
+                        }
+
+                        if (targetTimestamp >= now) {
+                            this.hasReachedNewestEnd = true;
+                            break;
+                        }
+
+                        stepDays = stepDays * 3;
+                        this.newerSearchStepDays = stepDays;
+                    }
+                }
+
+                if (added > 0) {
                     log(`[API Context] Fetched ${added} more ${direction} photos from library.`);
                     this.photos.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
                     this.renderModalPhotos();
-                    if (onComplete) onComplete(added);
+                    this.updateModifiedCounter();
                 } else {
                     log(`[API Context] No further ${direction} photos returned from Library.`);
-                    if (direction === 'older') this.hasReachedOldestEnd = true;
-                    if (direction === 'newer') this.hasReachedNewestEnd = true;
-                    if (onComplete) onComplete(0);
                 }
+                if (onComplete) onComplete(added);
             } catch (err) {
                 error(`[API Context] Error loading more ${direction} library photos:`, err);
                 if (direction === 'older') this.hasReachedOldestEnd = true;
@@ -2083,25 +1997,36 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
                 tdThumb.appendChild(thumbBox);
 
-                // Date comparison cell
-                const tdDates = document.createElement('td');
-                tdDates.style.cssText = `padding: 10px 16px; vertical-align: middle;`;
+                // Old Date column
+                const tdOld = document.createElement('td');
+                tdOld.style.cssText = `padding: 10px 16px; vertical-align: middle;`;
+                tdOld.innerHTML = `
+                    <div class="gp-confirm-old-box" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 6px 12px; font-family: 'Roboto Mono', monospace, sans-serif; font-size: 13px; display: inline-flex; align-items: center;">
+                        ${diff.oldHtml}
+                    </div>
+                `;
 
-                tdDates.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 6px 12px; font-family: 'Roboto Mono', monospace, sans-serif; font-size: 13px; display: inline-flex; align-items: center;">
-                            ${diff.oldHtml}
-                        </div>
-                        <span style="color: #8ab4f8; font-size: 15px; font-weight: bold; flex-shrink: 0;">➔</span>
-                        <div style="background: rgba(138, 180, 248, 0.08); border: 1px solid rgba(138, 180, 248, 0.25); border-radius: 8px; padding: 6px 12px; font-family: 'Roboto Mono', monospace, sans-serif; font-size: 13px; display: inline-flex; align-items: center;">
-                            ${diff.newHtml}
-                        </div>
+                // Arrow column
+                const tdArrow = document.createElement('td');
+                tdArrow.style.cssText = `padding: 10px 4px; vertical-align: middle; text-align: center; width: 36px;`;
+                tdArrow.innerHTML = `
+                    <span class="gp-confirm-arrow" style="font-size: 16px; font-weight: bold; display: inline-block;">➔</span>
+                `;
+
+                // New Date column
+                const tdNew = document.createElement('td');
+                tdNew.style.cssText = `padding: 10px 16px; vertical-align: middle;`;
+                tdNew.innerHTML = `
+                    <div class="gp-confirm-new-box" style="border-radius: 8px; padding: 6px 12px; font-family: 'Roboto Mono', monospace, sans-serif; font-size: 13px; display: inline-flex; align-items: center;">
+                        ${diff.newHtml}
                     </div>
                 `;
 
                 row.appendChild(tdIndex);
                 row.appendChild(tdThumb);
-                row.appendChild(tdDates);
+                row.appendChild(tdOld);
+                row.appendChild(tdArrow);
+                row.appendChild(tdNew);
                 tbody.appendChild(row);
             });
 
@@ -2150,109 +2075,17 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         },
 
         getWizGlobalData: function () {
-            if (this._cachedWizData && this._cachedWizData.at) {
-                return this._cachedWizData;
-            }
-
-            let at = '', fsid = '', bl = '', path = '/_/PhotosUi/', account = '';
-
-            // 1. Direct window check (if accessible in current JS realm)
-            try {
-                if (typeof window.WIZ_global_data === 'object' && window.WIZ_global_data) {
-                    const w = window.WIZ_global_data;
-                    at = w.SNlM0e || '';
-                    fsid = w.FdrFJe || '';
-                    bl = w.cfb2h || '';
-                    path = w.eptZe || '/_/PhotosUi/';
-                    account = w.oPEP7c || '';
-                }
-            } catch (e) {}
-
-            // 2. Scan static DOM script tags for WIZ_global_data JSON (100% CSP safe, no inline script execution)
-            if (!at) {
-                try {
-                    const scripts = document.querySelectorAll('script');
-                    for (const s of scripts) {
-                        const content = s.textContent || '';
-                        if (content.includes('WIZ_global_data') || content.includes('SNlM0e')) {
-                            const atMatch = content.match(/"SNlM0e"\s*:\s*"([^"]+)"/);
-                            const fsidMatch = content.match(/"FdrFJe"\s*:\s*"([^"]+)"/);
-                            const blMatch = content.match(/"cfb2h"\s*:\s*"([^"]+)"/);
-                            const pathMatch = content.match(/"eptZe"\s*:\s*"([^"]+)"/);
-                            const accMatch = content.match(/"oPEP7c"\s*:\s*"([^"]+)"/);
-
-                            if (atMatch) at = atMatch[1];
-                            if (fsidMatch) fsid = fsidMatch[1];
-                            if (blMatch) bl = blMatch[1];
-                            if (pathMatch) path = pathMatch[1];
-                            if (accMatch) account = accMatch[1];
-
-                            if (at) break;
-                        }
-                    }
-                } catch (e) {
-                    warn('Script tag regex search for WIZ_global_data threw:', e);
-                }
-            }
-
-            const res = { at, fsid, bl, path, account };
-            if (at) {
-                this._cachedWizData = res;
-            }
-            return res;
+            return (window.TimTools && window.TimTools.API)
+                ? window.TimTools.API.getSessionData()
+                : { at: null };
         },
 
-        makeApiRequest: async function (rpcid, requestData, wizData) {
-            const wrappedData = [[[rpcid, JSON.stringify(requestData), null, 'generic']]];
-            const requestDataString = `f.req=${encodeURIComponent(JSON.stringify(wrappedData))}&at=${encodeURIComponent(wizData.at)}&`;
-            const params = {
-                rpcids: rpcid,
-                'source-path': window.location.pathname,
-                'f.sid': wizData.fsid || '',
-                bl: wizData.bl || '',
-                pageId: 'none',
-                rt: 'c',
-            };
-            const paramsString = Object.keys(params)
-                .map((key) => `${key}=${encodeURIComponent(params[key])}`)
-                .join('&');
-            const basePath = wizData.path || '/_/PhotosUi/';
-            const url = `https://photos.google.com${basePath}data/batchexecute?${paramsString}`;
-
-            log(`Making batchexecute RPC request [${rpcid}] to ${url}...`);
-
-            const response = await fetch(url, {
-                headers: {
-                    'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                },
-                body: requestDataString,
-                method: 'POST',
-                credentials: 'include',
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status} ${response.statusText}`);
+        makeApiRequest: function (rpcid, requestData, sourcePathOrWizData) {
+            const sourcePath = typeof sourcePathOrWizData === 'string' ? sourcePathOrWizData : undefined;
+            if (window.TimTools && window.TimTools.API) {
+                return window.TimTools.API.makeRequest(rpcid, requestData, sourcePath);
             }
-
-            const responseBody = await response.text();
-            if (!responseBody) {
-                throw new Error('Empty response body from Google Photos server');
-            }
-
-            const jsonLines = responseBody.split('\n').filter((line) => line.includes('wrb.fr'));
-            if (jsonLines.length === 0) {
-                return null;
-            }
-
-            try {
-                const parsedData = JSON.parse(jsonLines[0]);
-                if (parsedData?.[0]?.[2]) {
-                    return JSON.parse(parsedData[0][2]);
-                }
-            } catch (e) {
-                warn(`Could not parse JSON payload from response line for [${rpcid}]:`, e);
-            }
-            return null;
+            throw new Error('window.TimTools.API is not available');
         },
 
         applyBatchDateChanges: async function (modifiedMap) {

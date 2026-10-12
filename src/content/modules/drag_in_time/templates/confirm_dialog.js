@@ -34,7 +34,9 @@ window.TimTools.Modules.DragInTimeTemplates.getConfirmModalHtml = function (coun
                             <tr class="gp-confirm-table-head-row">
                                 <th style="padding: 10px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; width: 36px; text-align: center;">#</th>
                                 <th style="padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; width: 68px;">Preview</th>
-                                <th style="padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Old date, time & timezone ➔ New date, time & timezone</th>
+                                <th style="padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Old date, time & timezone</th>
+                                <th style="padding: 10px 4px; font-size: 14px; font-weight: 700; width: 36px; text-align: center;" class="gp-confirm-arrow-col">➔</th>
+                                <th style="padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">New date, time & timezone</th>
                             </tr>
                         </thead>
                         <tbody class="gp-confirm-table-body"></tbody>
@@ -45,8 +47,8 @@ window.TimTools.Modules.DragInTimeTemplates.getConfirmModalHtml = function (coun
 
             <!-- Actions -->
             <div class="gp-confirm-dialog-footer" style="padding: 16px 28px; display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
-                <button class="gp-confirm-cancel-btn" style="border-radius: 20px; padding: 0 20px; height: 36px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color 0.15s;">Cancel</button>
-                <button class="gp-confirm-save-btn" style="border-radius: 20px; padding: 0 24px; height: 36px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: background-color 0.15s, box-shadow 0.15s;">Confirm</button>
+                <button class="gp-modal-back-btn gp-confirm-cancel-btn">Cancel</button>
+                <button class="gp-modal-save-btn gp-confirm-save-btn">Confirm</button>
             </div>
         </div>
     `;

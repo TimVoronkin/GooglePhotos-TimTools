@@ -1,0 +1,42 @@
+/* ========================================================
+   Up Navigation Button Module Styles
+   ======================================================== */
+
+#up-button,
+.gp-up-button {
+    position: relative;
+    z-index: 99999;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    margin-left: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gp-up-button-accent, #ffffff);
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+    align-self: center;
+    outline: none;
+}
+
+#up-button:hover,
+.gp-up-button:hover {
+    background-color: rgba(128, 128, 128, 0.16);
+}
+
+#up-button svg,
+.gp-up-button svg,
+#up-button svg path,
+.gp-up-button svg path {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+    color: currentColor;
+    display: block;
+}
+

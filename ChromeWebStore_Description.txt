@@ -1,0 +1,103 @@
+Google Photos Tim Tools — Power-User Extension for Google Photos
+
+Do you love Google Photos with all your heart but feel like it's missing a button with a specific feature? Check out this extension - you'll probably find something useful!
+Everything runs 100% locally in your browser with zero tracking and zero external servers.
+
+==================================================
+✨ CORE FEATURES AT A GLANCE
+==================================================
+
+🕒 1. DRAG IN TIME
+Reorder and adjust photo timestamps with an intuitive visual editor!
+• Drag-and-Drop Re-dating: Drag photos between dates or adjust the timeline slider to smoothly interpolate timestamps.
+• Batch Shift Timestamps: Correct shifted camera clocks or timezones across dozens of photos in seconds.
+• Non-Destructive Preview: Review every single changed timestamp in a side-by-side comparison table before committing.
+• Direct Google Photos Sync: Changes are saved directly to Google Photos via official internal API calls.
+• Works in Main Library & Albums: Seamlessly insert album photos into your general timeline stream.
+
+📁 2. SMART ARCHIVING (Timeline Visibility Filters)
+Adapt your main photostream on demand depending on who is watching your screen!
+• Albums as Visibility Filters: Turn specific Google Photos albums into instant toggle filters (e.g., "Documents", "Cringe Photos", "Ex-Partner", or "Receipts").
+• 1-Click Show / Hide Toggles: Access a sleek popover directly from the header to archive or unarchive all photos in selected filter albums.
+• Tailored for Social Browsing: Showing your photos to family or coworkers? Turn off sensitive filters to keep your timeline completely clean. Browsing with your best friend? Bring your "Cringe Photos" back into your stream with one click!
+• 100% Safe & Reversible: Photos are moved to Google Photos Archive (`/archive`) and back — nothing is ever deleted.
+• Multi-Account & Fast Sync: Independent filter presets per Google account, synced in rapid batches via internal Google Photos APIs.
+
+📅 3. DATE SEARCH & INTERACTIVE DATE PICKER
+Jump to any moment in time instantly!
+• Calendar Popup: Click the calendar icon directly in the Google Photos search bar to open a clean Material 3 calendar.
+• Year & Month Quick Jump: Navigate decades in two clicks.
+• Auto-Formatted Search: Automatically executes formatted date queries (`YYYY-MM-DD` or range queries) in Google Photos.
+• Responsive Toolbar: Seamlessly adapts to small and large browser windows.
+
+⬆️ 4. UP NAVIGATION BUTTON (Return to Grid Anchor)
+Never lose your place on the timeline again!
+• Floating Anchor Button: In full-screen photo view (`/photo/...`), click the Up button to instantly return to the main timeline grid.
+• Exact Scroll Position: Automatically scrolls the grid to the exact date and location of the photo you were viewing.
+• Auto-Close Photo: Smoothly transitions back to the grid view without manual Esc pressing.
+
+🗑️ 5. INSTANT DELETE SHORTCUT
+Speed up your photo culling and decluttering!
+• Press 'Delete' on your keyboard to instantly send the selected or currently viewed photo to the Trash.
+• Bypasses repetitive confirmation modals for lightning-fast photo management.
+
+❌ 6. ALBUM QUICK REMOVE
+Effortlessly curate your Google Photos albums!
+• Adds a convenient quick-remove cross icon to photo cards inside albums.
+• Remove photos from an album in 1 click without affecting the original in your library.
+
+🗺️ 7. KML GEOTAG EXPORT
+Visualize your photo journeys in Google Earth and GIS software!
+• Extract GPS coordinates, timestamps, and camera metadata from your photo albums.
+• Export cleanly formatted `.kml` files ready for Google Earth, GIS software, or interactive travel maps.
+
+🎨 8. CUSTOM THEMES & ACCENT COLORS
+Customize your Google Photos interface!
+• Full Light & Dark mode support tailored to Google Photos native styling.
+• Custom Accent Color Picker: Choose your favorite colors (e.g. lime green, cyan, purple, gold) to style extension buttons, switches, and highlights.
+• Zero visual clutter: Integrates seamlessly into Google Photos Material 3 design system.
+
+==================================================
+🔒 PRIVACY & SECURITY FIRST
+==================================================
+
+• 100% Client-Side: All processing, token extraction, and API calls happen directly inside your browser.
+• Zero External Servers: Tim Tools does NOT communicate with any third-party servers. No telemetry, no ads, no trackers.
+• Authenticated Session: Utilizes your existing, active Google Photos session cookies (`batchexecute` RPCs). Your Google password and credentials are never accessed or stored.
+• Open Source: Fully transparent, auditable code available on GitHub.
+
+==================================================
+⌨️ KEYBOARD SHORTCUTS
+==================================================
+
+• [ Delete ] — Move current photo or selection to Trash
+• [ Esc ] — Close Drag in Time, Date Picker, or Smart Archiving popups
+• [ PageUp / PageDown ] — Navigate months in Date Picker
+
+==================================================
+⚙️ PERMISSIONS EXPLAINED
+==================================================
+
+• storage: Saves your feature toggles, custom accent colors, and Smart Archiving filter rules across browser sessions via chrome.storage.sync.
+• downloads: Allows saving exported `.kml` geotag files directly to your Downloads folder.
+• clipboardWrite: Enables copying photo date strings, filter summaries, or coordinates to your clipboard.
+• photos.google.com: The extension script runs exclusively on `https://photos.google.com/*`.
+
+==================================================
+🚀 GET STARTED IN SECONDS
+==================================================
+
+1. Install the extension from Chrome Web Store.
+2. Open or refresh https://photos.google.com.
+3. Enjoy your newly supercharged Google Photos library!
+4. Click the extension icon in your browser toolbar anytime to customize settings and accent colors.
+
+==================================================
+💬 FEEDBACK & SUPPORT
+==================================================
+
+Created with ❤️ for photography enthusiasts and Google Photos power users.
+Have a feature request, bug report, or idea?
+Visit our GitHub repository or contact us through the extension options page.
+Enjoying the extension? Please leave a 5-star review! ⭐⭐⭐⭐⭐
+

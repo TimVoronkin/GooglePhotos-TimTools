@@ -175,31 +175,7 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             button.title = 'Up Navigation Button';
             button.setAttribute('aria-label', 'Up Navigation');
             
-            button.className = 'pYTkkf-Bz112c-LgbsSe pYTkkf-Bz112c-LgbsSe-OWXEXe-SfQLQb-suEOdc';
-            button.style.position = 'relative';
-            button.style.zIndex = '99999';
-            button.style.background = 'transparent';
-            button.style.border = 'none';
-            button.style.borderRadius = '50%';
-            button.style.width = '40px';
-            button.style.height = '40px';
-            button.style.padding = '0';
-            button.style.marginLeft = '4px';
-            button.style.cursor = 'pointer';
-            button.style.display = 'flex';
-            button.style.alignItems = 'center';
-            button.style.justifyContent = 'center';
-            button.style.color = 'inherit';
-            button.style.transition = 'background-color 0.2s';
-            button.style.flexShrink = '0';
-            button.style.alignSelf = 'center';
-
-            button.addEventListener('mouseenter', function () {
-                button.style.backgroundColor = 'rgba(128, 128, 128, 0.16)';
-            });
-            button.addEventListener('mouseleave', function () {
-                button.style.backgroundColor = 'transparent';
-            });
+            button.className = 'pYTkkf-Bz112c-LgbsSe pYTkkf-Bz112c-LgbsSe-OWXEXe-SfQLQb-suEOdc gp-up-button';
 
             button.innerHTML = `
                 <span class="pYTkkf-Bz112c-kBDsod-Rtc0Jf" aria-hidden="true" style="display:flex;align-items:center;justify-content:center;">

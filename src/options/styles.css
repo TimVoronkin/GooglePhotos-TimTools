@@ -167,18 +167,18 @@ h1 {
 }
 
 .icon-btn-github {
-    mask-image: url('../../assets/active/logo_github.svg');
-    -webkit-mask-image: url('../../assets/active/logo_github.svg');
+    mask-image: url('../../assets/icons/logo_github.svg');
+    -webkit-mask-image: url('../../assets/icons/logo_github.svg');
 }
 
 .icon-btn-email {
-    mask-image: url('../../assets/active/alternate-email.svg');
-    -webkit-mask-image: url('../../assets/active/alternate-email.svg');
+    mask-image: url('../../assets/icons/alternate-email.svg');
+    -webkit-mask-image: url('../../assets/icons/alternate-email.svg');
 }
 
 .icon-btn-kofi {
-    mask-image: url('../../assets/active/logo_kofi.svg');
-    -webkit-mask-image: url('../../assets/active/logo_kofi.svg');
+    mask-image: url('../../assets/icons/logo_kofi.svg');
+    -webkit-mask-image: url('../../assets/icons/logo_kofi.svg');
 }
 
 .intro-btn:hover {
@@ -291,48 +291,48 @@ h1 {
 }
 
 .icon-drag-pan {
-    mask-image: url('../../assets/active/drag-pan.svg');
-    -webkit-mask-image: url('../../assets/active/drag-pan.svg');
+    mask-image: url('../../assets/icons/drag-pan.svg');
+    -webkit-mask-image: url('../../assets/icons/drag-pan.svg');
 }
 
 .icon-filter {
-    mask-image: url('../../assets/active/filter.svg');
-    -webkit-mask-image: url('../../assets/active/filter.svg');
+    mask-image: url('../../assets/icons/filter.svg');
+    -webkit-mask-image: url('../../assets/icons/filter.svg');
 }
 
 .icon-kml-export {
-    mask-image: url('../../assets/active/kml-export.svg');
-    -webkit-mask-image: url('../../assets/active/kml-export.svg');
+    mask-image: url('../../assets/icons/kml-export.svg');
+    -webkit-mask-image: url('../../assets/icons/kml-export.svg');
 }
 
 .icon-calendar {
-    mask-image: url('../../assets/active/calendar.svg');
-    -webkit-mask-image: url('../../assets/active/calendar.svg');
+    mask-image: url('../../assets/icons/calendar.svg');
+    -webkit-mask-image: url('../../assets/icons/calendar.svg');
 }
 
 .icon-arrow-upward {
-    mask-image: url('../../assets/active/arrow-upward.svg');
-    -webkit-mask-image: url('../../assets/active/arrow-upward.svg');
+    mask-image: url('../../assets/icons/arrow-upward.svg');
+    -webkit-mask-image: url('../../assets/icons/arrow-upward.svg');
 }
 
 .icon-trash {
-    mask-image: url('../../assets/active/trash.svg');
-    -webkit-mask-image: url('../../assets/active/trash.svg');
+    mask-image: url('../../assets/icons/trash.svg');
+    -webkit-mask-image: url('../../assets/icons/trash.svg');
 }
 
 .icon-palette {
-    mask-image: url('../../assets/active/palette.svg');
-    -webkit-mask-image: url('../../assets/active/palette.svg');
+    mask-image: url('../../assets/icons/palette.svg');
+    -webkit-mask-image: url('../../assets/icons/palette.svg');
 }
 
 .icon-terminal {
-    mask-image: url('../../assets/active/terminal.svg');
-    -webkit-mask-image: url('../../assets/active/terminal.svg');
+    mask-image: url('../../assets/icons/terminal.svg');
+    -webkit-mask-image: url('../../assets/icons/terminal.svg');
 }
 
 .icon-playlist-remove {
-    mask-image: url('../../assets/active/playlist-remove.svg');
-    -webkit-mask-image: url('../../assets/active/playlist-remove.svg');
+    mask-image: url('../../assets/icons/playlist-remove.svg');
+    -webkit-mask-image: url('../../assets/icons/playlist-remove.svg');
 }
 
 .card-title {

@@ -1,0 +1,220 @@
+/* ========================================================
+   Date Search & Picker Module Styles
+   ======================================================== */
+
+.custom-date-btn,
+.gp-date-search-btn {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 0;
+    outline: none;
+    color: var(--gp-active-accent, currentColor);
+    flex-shrink: 0;
+}
+
+.custom-date-btn:not(.custom-date-btn-compact),
+.gp-date-search-btn:not(.gp-date-search-btn-compact) {
+    margin-right: 16px;
+    opacity: 0.75;
+    transition: opacity 0.2s;
+}
+
+.custom-date-btn:not(.custom-date-btn-compact):hover,
+.gp-date-search-btn:not(.gp-date-search-btn-compact):hover {
+    opacity: 1;
+}
+
+/* Compact toolbar mode (when window shrinks and search collapses) */
+.custom-date-btn-compact,
+.gp-date-search-btn-compact {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 4px;
+    opacity: 1;
+    transition: background-color 0.2s;
+}
+
+.custom-date-btn-compact:hover,
+.gp-date-search-btn-compact:hover {
+    background-color: rgba(128, 128, 128, 0.16);
+}
+
+.custom-date-btn svg,
+.gp-date-search-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+    display: block;
+}
+
+/* Date Picker Popup & Overlay */
+#date-picker-overlay,
+#gp-date-picker-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: none;
+    z-index: 10000;
+    background-color: transparent;
+}
+
+#date-picker-popup,
+#gp-date-picker-popup {
+    position: absolute;
+    width: 250px;
+    padding: 16px;
+    border-radius: 12px;
+    font-family: 'Google Sans', Roboto, sans-serif;
+    user-select: none;
+    box-sizing: border-box;
+    z-index: 10001;
+}
+
+/* Dark Theme (Default) */
+#date-picker-popup,
+#gp-date-picker-popup,
+html.gp-theme-dark #date-picker-popup,
+html.gp-timtools-theme-dark #date-picker-popup {
+    background-color: #202124;
+    color: #e8eaed;
+    border: 1px solid #3c4043;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+/* Light Theme */
+html.gp-theme-light #date-picker-popup,
+html.gp-timtools-theme-light #date-picker-popup,
+html.gp-theme-light #gp-date-picker-popup,
+html.gp-timtools-theme-light #gp-date-picker-popup {
+    background-color: #ffffff;
+    color: #202124;
+    border: 1px solid #dadce0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.16);
+}
+
+.dp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.dp-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-weight: 500;
+    border-radius: 4px;
+    color: inherit;
+    font-family: inherit;
+    transition: background-color 0.15s;
+}
+
+.dp-btn:hover {
+    background-color: rgba(128, 128, 128, 0.16);
+}
+
+.dp-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    text-align: center;
+}
+
+.dp-day-header {
+    font-size: 12px;
+    color: #9aa0a6;
+    padding: 4px 0;
+    font-weight: 500;
+}
+
+html.gp-theme-light .dp-day-header,
+html.gp-timtools-theme-light .dp-day-header {
+    color: #5f6368;
+}
+
+.dp-day {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 2px auto;
+    cursor: pointer;
+    border-radius: 50%;
+    font-size: 13px;
+    color: inherit;
+    transition: background-color 0.15s;
+}
+
+.dp-day:hover {
+    background-color: rgba(128, 128, 128, 0.16);
+}
+
+.dp-day.selected {
+    background-color: var(--gp-active-accent, #8ab4f8) !important;
+    color: #202124 !important;
+    font-weight: 600;
+}
+
+.dp-day.today {
+    border: 1px solid var(--gp-active-accent, #8ab4f8);
+    box-sizing: border-box;
+}
+
+.dp-day.empty {
+    pointer-events: none;
+}
+
+.dp-year-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    height: 230px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-top: 5px;
+}
+
+.dp-year-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dp-year-list::-webkit-scrollbar-thumb {
+    background-color: rgba(128, 128, 128, 0.3);
+    border-radius: 3px;
+}
+
+.dp-year-item {
+    padding: 8px 0;
+    cursor: pointer;
+    border-radius: 4px;
+    color: inherit;
+    text-align: center;
+    font-size: 14px;
+    transition: background-color 0.15s;
+}
+
+.dp-year-item:hover {
+    background-color: rgba(128, 128, 128, 0.16);
+}
+
+.dp-year-item.current {
+    border: 1px solid var(--gp-active-accent, #8ab4f8);
+    box-sizing: border-box;
+}
+
+.dp-year-item.selected {
+    background-color: var(--gp-active-accent, #8ab4f8);
+    color: #202124;
+    font-weight: 600;
+}
+
