@@ -3,7 +3,7 @@ window.TimTools = window.TimTools || {};
 (function () {
     const DEFAULTS = {
         enableUpButton: true,
-        upButtonClosePhoto: false,
+        upButtonClosePhoto: true,
         enableDateSearch: true,
         enableDeleteShortcut: true,
         enableKmlExport: true,
@@ -18,8 +18,8 @@ window.TimTools = window.TimTools || {};
         kmlFilePrefix: "MyExport_",
         appTheme: "dark",
         enableCustomIconColors: false,
-        customIconColorDark: "#0B57D0",
-        customIconColorLight: "#A8C7FA",
+        customIconColorDark: "#709900",
+        customIconColorLight: "#B8F500",
         enableDebugLogging: false
     };
 

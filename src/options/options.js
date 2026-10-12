@@ -190,13 +190,13 @@ function restoreOptions() {
         if (enableCustomIconColors) enableCustomIconColors.checked = items.enableCustomIconColors === true;
         if (enableDebugLogging) enableDebugLogging.checked = items.enableDebugLogging === true;
 
-        if (upButtonClosePhoto) upButtonClosePhoto.checked = items.upButtonClosePhoto === true;
+        if (upButtonClosePhoto) upButtonClosePhoto.checked = items.upButtonClosePhoto !== false;
         if (kmlCreateSubfolder) kmlCreateSubfolder.checked = items.kmlCreateSubfolder !== false;
         if (kmlFolderName) kmlFolderName.value = items.kmlFolderName || 'GooglePhotosExports';
         if (kmlFilePrefix) kmlFilePrefix.value = items.kmlFilePrefix || 'MyExport_';
 
-        const darkColor = items.customIconColorDark || '#0B57D0';
-        const lightColor = items.customIconColorLight || '#A8C7FA';
+        const darkColor = items.customIconColorDark || '#709900';
+        const lightColor = items.customIconColorLight || '#B8F500';
 
         if (customIconColorDarkPicker) customIconColorDarkPicker.value = darkColor;
         if (customIconColorDarkHex) customIconColorDarkHex.value = darkColor.toUpperCase();
@@ -343,12 +343,12 @@ function saveOptions() {
         albumQuickRemoveConfirm: albumQuickRemoveConfirm ? albumQuickRemoveConfirm.checked : true,
         enableCustomIconColors: enableCustomIconColors ? enableCustomIconColors.checked : false,
         enableDebugLogging: enableDebugLogging ? enableDebugLogging.checked : false,
-        upButtonClosePhoto: upButtonClosePhoto ? upButtonClosePhoto.checked : false,
+        upButtonClosePhoto: upButtonClosePhoto ? upButtonClosePhoto.checked : true,
         kmlCreateSubfolder: kmlCreateSubfolder ? kmlCreateSubfolder.checked : true,
         kmlFolderName: kmlFolderName ? kmlFolderName.value : 'GooglePhotosExports',
         kmlFilePrefix: kmlFilePrefix ? kmlFilePrefix.value : 'MyExport_',
-        customIconColorDark: customIconColorDarkHex ? customIconColorDarkHex.value : '#0B57D0',
-        customIconColorLight: customIconColorLightHex ? customIconColorLightHex.value : '#A8C7FA'
+        customIconColorDark: customIconColorDarkHex ? customIconColorDarkHex.value : '#709900',
+        customIconColorLight: customIconColorLightHex ? customIconColorLightHex.value : '#B8F500'
     }).then(() => {
         setSavingState(false);
     });

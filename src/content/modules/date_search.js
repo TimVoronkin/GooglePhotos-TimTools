@@ -255,7 +255,9 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const popup = this.popupContainer.querySelector('#date-picker-popup');
             const rect = button.getBoundingClientRect();
             popup.style.top = (rect.bottom + 5) + 'px';
-            popup.style.left = Math.max(10, rect.left - 200) + 'px';
+            const popupWidth = 250;
+            const leftPos = Math.min(window.innerWidth - popupWidth - 16, Math.max(10, rect.left - 200));
+            popup.style.left = leftPos + 'px';
         },
 
         close: function (date) {
@@ -265,38 +267,143 @@ window.TimTools.Modules = window.TimTools.Modules || {};
     };
 
     const DateSearch = {
+        btn: null,
+        currentMode: null, // 'expanded' | 'compact'
+
         init: function () {
             logger.log('Init');
             this.observer = new MutationObserver(() => {
-                this.injectButton();
+                this.updateButtonPlacement();
             });
             this.observer.observe(document.body, { childList: true, subtree: true });
-            this.injectButton();
+
+            if (window.ResizeObserver) {
+                this.resizeObserver = new ResizeObserver(() => {
+                    this.updateButtonPlacement();
+                });
+                this.resizeObserver.observe(document.body);
+            }
+
+            window.addEventListener('resize', () => {
+                this.updateButtonPlacement();
+            });
+
+            this.updateButtonPlacement();
         },
 
-        injectButton: function () {
-            const container = document.querySelector(CONTAINER_SELECTOR);
-            if (!container || container.querySelector('.custom-date-btn')) return;
+        getOrCreateButton: function () {
+            if (this.btn && document.body.contains(this.btn)) {
+                return this.btn;
+            }
+            const existing = document.querySelector('.custom-date-btn');
+            if (existing) {
+                this.btn = existing;
+                return this.btn;
+            }
 
             const btn = document.createElement('div');
             btn.className = 'custom-date-btn';
+            btn.setAttribute('title', 'Date Search');
+            btn.setAttribute('aria-label', 'Date Search');
+            btn.innerHTML = SVG_CALENDAR_ICON;
+            btn.onclick = (e) => this.onBtnClick(e);
+
+            this.btn = btn;
+            return btn;
+        },
+
+        isSearchExpanded: function () {
+            const inputWrapper = document.querySelector('.L6J0Pc');
+            if (!inputWrapper) return false;
+            const rect = inputWrapper.getBoundingClientRect();
+            return rect.width > 60 && rect.height > 0 && window.getComputedStyle(inputWrapper).display !== 'none';
+        },
+
+        applyExpandedStyles: function (btn) {
+            btn.classList.remove('custom-date-btn-compact');
             btn.style.cursor = 'pointer';
             btn.style.display = 'flex';
             btn.style.alignItems = 'center';
             btn.style.justifyContent = 'center';
+            btn.style.width = 'auto';
+            btn.style.height = 'auto';
+            btn.style.borderRadius = '0';
             btn.style.marginRight = '16px';
+            btn.style.marginLeft = '0';
             btn.style.opacity = '0.75';
-            btn.style.transition = 'opacity 0.2s';
-            btn.setAttribute('title', 'Date Search');
+            btn.style.transition = 'opacity 0.2s, background-color 0.2s';
+            btn.style.backgroundColor = 'transparent';
+            btn.style.padding = '0';
+            btn.style.flexShrink = '0';
 
-            btn.onmouseenter = () => btn.style.opacity = '1';
-            btn.onmouseleave = () => btn.style.opacity = '0.75';
+            btn.onmouseenter = () => { btn.style.opacity = '1'; };
+            btn.onmouseleave = () => { btn.style.opacity = '0.75'; };
+        },
 
-            btn.innerHTML = SVG_CALENDAR_ICON;
-            btn.onclick = (e) => this.onBtnClick(e);
+        applyCompactStyles: function (btn) {
+            btn.classList.add('custom-date-btn-compact');
+            btn.style.cursor = 'pointer';
+            btn.style.display = 'flex';
+            btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'center';
+            btn.style.width = '40px';
+            btn.style.height = '40px';
+            btn.style.borderRadius = '50%';
+            btn.style.marginRight = '4px';
+            btn.style.marginLeft = '0';
+            btn.style.opacity = '1';
+            btn.style.transition = 'background-color 0.2s';
+            btn.style.backgroundColor = 'transparent';
+            btn.style.padding = '0';
+            btn.style.flexShrink = '0';
 
-            container.appendChild(btn);
-            logger.log('Injected calendar button into search bar');
+            btn.onmouseenter = () => { btn.style.backgroundColor = 'rgba(128, 128, 128, 0.16)'; };
+            btn.onmouseleave = () => { btn.style.backgroundColor = 'transparent'; };
+        },
+
+        updateButtonPlacement: function () {
+            const isExpanded = this.isSearchExpanded();
+            const btn = this.getOrCreateButton();
+
+            if (isExpanded) {
+                // Wide window: place inside search pill (.Aul2T.m6aMje)
+                const searchContainer = document.querySelector(CONTAINER_SELECTOR);
+                if (!searchContainer) return;
+
+                if (this.currentMode !== 'expanded' || btn.parentElement !== searchContainer) {
+                    this.applyExpandedStyles(btn);
+                    searchContainer.appendChild(btn);
+                    this.currentMode = 'expanded';
+                    logger.log('Placed calendar button inside search pill (expanded mode)');
+                }
+            } else {
+                // Narrow window: place to the right of search icon
+                // Prefer inserting into .J3TAe before any action buttons (e.g. before Smart Archiving)
+                const actionContainer = document.querySelector('div.J3TAe');
+                if (actionContainer) {
+                    if (this.currentMode !== 'compact' || btn.parentElement !== actionContainer || actionContainer.firstElementChild !== btn) {
+                        this.applyCompactStyles(btn);
+                        if (actionContainer.firstElementChild) {
+                            actionContainer.insertBefore(btn, actionContainer.firstElementChild);
+                        } else {
+                            actionContainer.appendChild(btn);
+                        }
+                        this.currentMode = 'compact';
+                        logger.log('Placed calendar button into toolbar next to search icon (compact mode)');
+                    }
+                } else {
+                    // Fallback: insert after .FGHAHc
+                    const searchWrapper = document.querySelector('.FGHAHc');
+                    if (searchWrapper && searchWrapper.parentElement) {
+                        if (btn.parentElement !== searchWrapper.parentElement) {
+                            this.applyCompactStyles(btn);
+                            searchWrapper.parentElement.insertBefore(btn, searchWrapper.nextSibling);
+                            this.currentMode = 'compact';
+                            logger.log('Placed calendar button after search container (fallback)');
+                        }
+                    }
+                }
+            }
         },
 
         onBtnClick: function (e) {

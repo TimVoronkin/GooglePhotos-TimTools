@@ -28,7 +28,34 @@ chrome.action.onClicked.addListener(() => {
 });
 
 // Track extraction tabs: { childTabId: { masterTabId, progress } }
+// Backed by chrome.storage.session to survive Manifest V3 Service Worker restarts
 const extractionTabs = {};
+
+async function getExtractionTab(tabId) {
+    if (!tabId) return null;
+    if (chrome.storage && chrome.storage.session) {
+        const key = `extract_tab_${tabId}`;
+        const res = await chrome.storage.session.get(key);
+        return res[key] || null;
+    }
+    return extractionTabs[tabId] || null;
+}
+
+async function setExtractionTab(tabId, data) {
+    if (!tabId) return;
+    extractionTabs[tabId] = data;
+    if (chrome.storage && chrome.storage.session) {
+        await chrome.storage.session.set({ [`extract_tab_${tabId}`]: data });
+    }
+}
+
+async function deleteExtractionTab(tabId) {
+    if (!tabId) return;
+    delete extractionTabs[tabId];
+    if (chrome.storage && chrome.storage.session) {
+        await chrome.storage.session.remove(`extract_tab_${tabId}`);
+    }
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
@@ -37,17 +64,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         logger.log('Received OPEN_EXTRACT_TAB', message.url);
         let urlStr = message.url;
         const previousTabId = message.existingTabId;
-        const masterTabId = sender.tab.id;
+        const masterTabId = sender.tab ? sender.tab.id : null;
         const progress = message.progress || {};
 
         if (previousTabId) {
-            chrome.tabs.update(previousTabId, { url: urlStr, active: true }, (tab) => {
+            chrome.tabs.update(previousTabId, { url: urlStr, active: true }, async (tab) => {
                 if (chrome.runtime.lastError) {
                     logger.log('Tab closed, creating new.');
                     createExtractionTab(urlStr, masterTabId, progress, sendResponse);
                 } else {
                     logger.log('Updated tab', tab.id);
-                    extractionTabs[tab.id] = { masterTabId, progress };
+                    await setExtractionTab(tab.id, { masterTabId, progress });
                     sendResponse({ tabId: tab.id });
                 }
             });
@@ -60,14 +87,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // Child tab asks: "Am I an extraction tab?"
     if (message.type === 'CHECK_EXTRACTION_MODE') {
-        const tabId = sender.tab.id;
-        const info = extractionTabs[tabId];
-        logger.log('CHECK_EXTRACTION_MODE from tab', tabId, '-> info:', info);
-        if (info) {
-            sendResponse({ isExtraction: true, masterId: info.masterTabId.toString(), progress: info.progress });
-        } else {
-            sendResponse({ isExtraction: false });
-        }
+        const tabId = sender.tab ? sender.tab.id : null;
+        getExtractionTab(tabId).then((info) => {
+            logger.log('CHECK_EXTRACTION_MODE from tab', tabId, '-> info:', info);
+            if (info) {
+                sendResponse({ isExtraction: true, masterId: info.masterTabId.toString(), progress: info.progress });
+            } else {
+                sendResponse({ isExtraction: false });
+            }
+        });
         return true;
     }
 
@@ -75,31 +103,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'CLOSE_EXTRACT_TAB') {
         logger.log('Closing tab', message.tabId);
         if (message.tabId) {
-            delete extractionTabs[message.tabId];
+            deleteExtractionTab(message.tabId);
             chrome.tabs.remove(message.tabId);
         }
     }
 
     // Data from Child -> Background -> Master
     if (message.type === 'GP_KML_DATA' || message.type === 'GP_KML_ERROR') {
-        // masterId can come from the message payload or from our tracking
-        let masterId = message.masterId;
-        if (!masterId && sender.tab) {
-            const info = extractionTabs[sender.tab.id];
-            if (info) masterId = info.masterTabId;
-        }
-        logger.log('Received', message.type, 'from child. Relaying to Master:', masterId);
-        if (masterId) {
-            // Ensure masterId is in the payload for the master to read
-            const relay = { ...message, masterId: masterId };
-            chrome.tabs.sendMessage(parseInt(masterId), relay, (response) => {
-                if (chrome.runtime.lastError) {
-                    logger.error('Error relaying to master:', chrome.runtime.lastError.message);
-                }
-            });
-        } else {
-            logger.warn('No masterId for this child tab!');
-        }
+        (async () => {
+            let masterId = message.masterId;
+            if (!masterId && sender.tab) {
+                const info = await getExtractionTab(sender.tab.id);
+                if (info) masterId = info.masterTabId;
+            }
+            logger.log('Received', message.type, 'from child. Relaying to Master:', masterId);
+            if (masterId) {
+                // Ensure masterId is in the payload for the master to read
+                const relay = { ...message, masterId: masterId };
+                chrome.tabs.sendMessage(parseInt(masterId), relay, (response) => {
+                    if (chrome.runtime.lastError) {
+                        logger.error('Error relaying to master:', chrome.runtime.lastError.message);
+                    }
+                });
+            } else {
+                logger.warn('No masterId for this child tab!');
+            }
+        })();
+        return true;
     }
 
     // Command to Download KML
@@ -136,9 +166,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 function createExtractionTab(url, masterTabId, progress, sendResponse) {
-    chrome.tabs.create({ url: url, active: true }, (tab) => {
+    chrome.tabs.create({ url: url, active: true }, async (tab) => {
         logger.log('Created tab', tab.id, 'for master', masterTabId);
-        extractionTabs[tab.id] = { masterTabId, progress };
+        await setExtractionTab(tab.id, { masterTabId, progress });
         sendResponse({ tabId: tab.id });
     });
 }

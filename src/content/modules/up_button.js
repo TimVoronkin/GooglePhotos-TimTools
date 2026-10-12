@@ -15,6 +15,9 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             logger.log('Init');
             let lastUrl = location.href;
             
+            // Check if we arrived here to auto-close and return to timeline grid
+            this.handleAutoCloseOnReturn();
+
             // 1. Observe child mutations and attribute changes for visibility toggles
             new MutationObserver(() => {
                 if (location.href !== lastUrl) {
@@ -35,6 +38,51 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             }, 500);
 
             this.checkAndAddButton();
+        },
+
+        handleAutoCloseOnReturn: function () {
+            if (typeof sessionStorage === 'undefined') return;
+            if (sessionStorage.getItem('gp_timtools_autoclose') !== '1') return;
+            sessionStorage.removeItem('gp_timtools_autoclose');
+            logger.log('Auto-close flag detected. Waiting for photo viewer to mount before dismissing...');
+
+            let attempts = 0;
+            const maxAttempts = 50; // up to 5 seconds
+            const interval = setInterval(() => {
+                attempts++;
+                const container = this.findActiveHeaderContainer();
+                const backBtn = container ? container.querySelector('a[jsname="hSRGPd"], button[aria-label*="Back"], button[aria-label*="Назад"], button[aria-label*="Close"], button[jsname="LgbsSe"]') : null;
+
+                if (backBtn || attempts >= 20) {
+                    clearInterval(interval);
+                    logger.log('Photo viewer mounted. Closing photo view to land on main timeline grid.');
+                    setTimeout(() => {
+                        if (backBtn) {
+                            backBtn.click();
+                        } else {
+                            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, code: 'Escape', bubbles: true }));
+                        }
+                    }, 250);
+                }
+
+                if (attempts >= maxAttempts) {
+                    clearInterval(interval);
+                }
+            }, 100);
+        },
+
+        getGlobalPhotoUrl: function (currentUrl) {
+            try {
+                const urlObj = new URL(currentUrl);
+                const photoMatch = urlObj.pathname.match(/\/photo\/([A-Za-z0-9_-]+)/);
+                if (!photoMatch) return currentUrl;
+                const photoKey = photoMatch[1];
+                const accountMatch = urlObj.pathname.match(/^\/u\/(\d+)/);
+                const accountPrefix = accountMatch ? `/u/${accountMatch[1]}` : '';
+                return `${urlObj.origin}${accountPrefix}/photo/${photoKey}${urlObj.search}`;
+            } catch (e) {
+                return currentUrl.replace(/(photos\.google\.com\/(?:u\/\d+\/)?)\S+?(\/photo\/)/, '$1$2');
+            }
         },
 
         findActiveHeaderContainer: function () {
@@ -161,26 +209,20 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 </span>
             `;
 
+            const self = this;
             button.addEventListener('click', async function (e) {
                 e.preventDefault();
                 e.stopPropagation();
 
-                var url = window.location.href;
-                var newUrl = url.replace(/(photos.google.com\/)\S+?(\/photo\/)/, '$1$2');
-                newUrl = newUrl.replace('photos.google.com//', 'photos.google.com/');
-                
+                const newUrl = self.getGlobalPhotoUrl(window.location.href);
                 const settings = await window.TimTools.Settings.getAll();
 
                 if (settings.upButtonClosePhoto) {
-                    logger.log('Closing photo view via native back button.');
-                    history.pushState(null, '', newUrl);
-
-                    const nativeBackBtn = container.querySelector('a[jsname="hSRGPd"], button[aria-label*="Back"], button[aria-label*="Назад"], button[jsname="LgbsSe"]');
-                    if (nativeBackBtn) {
-                        nativeBackBtn.click();
-                    }
+                    logger.log('Up Button clicked with auto-close enabled. Navigating to:', newUrl);
+                    sessionStorage.setItem('gp_timtools_autoclose', '1');
+                    window.location.href = newUrl;
                 } else {
-                    logger.log('Navigating to:', newUrl);
+                    logger.log('Up Button clicked. Navigating to:', newUrl);
                     window.location.href = newUrl;
                 }
             });
