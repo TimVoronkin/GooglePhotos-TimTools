@@ -1,4 +1,4 @@
-# Google Photos Tim Tools
+# <img src="assets/logo/logo-48.png" width="32" height="32" alt="Logo" align="center"> Google Photos Tim Tools
 
 A comprehensive, privacy-first Google Chrome extension that enhances [Google Photos](https://photos.google.com) with power utilities. It runs 100% locally in your browser - no third-party servers, no telemetry, and no external tracking.
 
@@ -6,7 +6,7 @@ A comprehensive, privacy-first Google Chrome extension that enhances [Google Pho
 
 The extension features a modular architecture where each tool can be individually enabled or configured via the Options Page. The modules are organized below in the exact order found in the extension settings:
 
-### 1. Drag in Times
+### 1. Drag in Time
 
 _Interactive timeline canvas for visually reordering photo timestamps._
 
