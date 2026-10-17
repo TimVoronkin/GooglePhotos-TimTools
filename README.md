@@ -96,6 +96,25 @@ Access the extension options page at any time by clicking the extension icon in 
 5. **Open Google Photos:**
    Navigate to [photos.google.com](https://photos.google.com) to start using the tools!
 
+## 📦 Building for Chrome Web Store
+
+To generate a clean production-ready `.zip` archive for uploading to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole):
+
+- **PowerShell (Windows):**
+  ```powershell
+  .\build.ps1
+  ```
+- **Node.js / npm (Cross-platform):**
+  ```bash
+  npm run build
+  ```
+
+**What the build script does automatically:**
+- Collects only runtime extension code (`src/`, `manifest.json`, optimized icons).
+- Excludes heavy source files (`.psd` assets, raw promo mockups, git history, docs).
+- Strips the local development `"key"` field from `manifest.json` as required by the Chrome Web Store.
+- Generates a lightweight (~125 KB) `dist/GooglePhotos-TimTools-v<version>.zip` ready for instant publishing.
+
 ## 🔒 Privacy & Security
 
 - **Local Execution:** All script operations run strictly inside your browser session.

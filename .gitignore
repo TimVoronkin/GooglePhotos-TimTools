@@ -1,3 +1,5 @@
-\temp
+temp/
+dist/
 key.pem
-\promo-materials
+.DS_Store
+Thumbs.db

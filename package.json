@@ -1,0 +1,17 @@
+{
+  "name": "google-photos-tim-tools",
+  "version": "1.0.0",
+  "description": "Power-user browser extension for Google Photos",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node -e \"console.log('No tests configured')\""
+  },
+  "keywords": [
+    "google-photos",
+    "chrome-extension",
+    "manifest-v3"
+  ],
+  "author": "Tim Voronkin",
+  "license": "MIT"
+}
+

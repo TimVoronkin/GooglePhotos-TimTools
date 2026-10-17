@@ -78,6 +78,10 @@ h1 {
     letter-spacing: 0.3px;
 }
 
+.version-tag:empty {
+    display: none;
+}
+
 /* Status Indicator */
 .status-indicator {
     display: flex;
