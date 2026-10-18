@@ -250,7 +250,7 @@ function applyOptionsTheme() {
             el.style.backgroundColor = lightColor;
         });
 
-        document.querySelectorAll('.intro-btn-support').forEach(btn => {
+        document.querySelectorAll('.intro-btn-support, .intro-btn-rate').forEach(btn => {
             btn.style.borderColor = hexToRgba(lightColor, 0.32);
             btn.style.backgroundColor = hexToRgba(lightColor, 0.08);
         });
@@ -276,7 +276,7 @@ function applyOptionsTheme() {
             el.style.backgroundColor = '';
         });
 
-        document.querySelectorAll('.intro-btn-support').forEach(btn => {
+        document.querySelectorAll('.intro-btn-support, .intro-btn-rate').forEach(btn => {
             btn.style.borderColor = '';
             btn.style.backgroundColor = '';
         });

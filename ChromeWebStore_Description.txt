@@ -3,9 +3,9 @@ Google Photos Tim Tools — Power-User Extension for Google Photos
 Do you love Google Photos with all your heart but feel like it's missing a button with a specific feature? Check out this extension - you'll probably find something useful!
 Everything runs 100% locally in your browser with zero tracking and zero external servers.
 
-==================================================
+
 ✨ CORE FEATURES AT A GLANCE
-==================================================
+========================================
 
 🕒 1. DRAG IN TIME
 Reorder and adjust photo timestamps with an intuitive visual editor!
@@ -57,47 +57,38 @@ Customize your Google Photos interface!
 • Custom Accent Color Picker: Choose your favorite colors (e.g. lime green, cyan, purple, gold) to style extension buttons, switches, and highlights.
 • Zero visual clutter: Integrates seamlessly into Google Photos Material 3 design system.
 
-==================================================
+
 🔒 PRIVACY & SECURITY FIRST
-==================================================
+========================================
 
 • 100% Client-Side: All processing, token extraction, and API calls happen directly inside your browser.
 • Zero External Servers: Tim Tools does NOT communicate with any third-party servers. No telemetry, no ads, no trackers.
 • Authenticated Session: Utilizes your existing, active Google Photos session cookies (`batchexecute` RPCs). Your Google password and credentials are never accessed or stored.
 • Open Source: Fully transparent, auditable code available on GitHub.
 
-==================================================
-⌨️ KEYBOARD SHORTCUTS
-==================================================
 
-• [ Delete ] — Move current photo or selection to Trash
-• [ Esc ] — Close Drag in Time, Date Picker, or Smart Archiving popups
-• [ PageUp / PageDown ] — Navigate months in Date Picker
-
-==================================================
 ⚙️ PERMISSIONS EXPLAINED
-==================================================
+========================================
 
 • storage: Saves your feature toggles, custom accent colors, and Smart Archiving filter rules across browser sessions via chrome.storage.sync.
 • downloads: Allows saving exported `.kml` geotag files directly to your Downloads folder.
 • clipboardWrite: Enables copying photo date strings, filter summaries, or coordinates to your clipboard.
 • photos.google.com: The extension script runs exclusively on `https://photos.google.com/*`.
 
-==================================================
+
 🚀 GET STARTED IN SECONDS
-==================================================
+========================================
 
 1. Install the extension from Chrome Web Store.
 2. Open or refresh https://photos.google.com.
 3. Enjoy your newly supercharged Google Photos library!
 4. Click the extension icon in your browser toolbar anytime to customize settings and accent colors.
 
-==================================================
+
 💬 FEEDBACK & SUPPORT
-==================================================
+========================================
 
 Created with ❤️ for photography enthusiasts and Google Photos power users.
 Have a feature request, bug report, or idea?
 Visit our GitHub repository or contact us through the extension options page.
 Enjoying the extension? Please leave a 5-star review! ⭐⭐⭐⭐⭐
-

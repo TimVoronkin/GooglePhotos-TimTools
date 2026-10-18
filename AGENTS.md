@@ -225,3 +225,19 @@ Google Photos web communicates with its servers via POST requests to:
 - **Dialogs & Modals:**
   - Follow Google Photos Material 3 dialog styling (rounded corners `24px`, subtle shadow, blurred backdrop).
   - Trap key events so they do not bubble up to Google Photos background handlers.
+- **Icons & SVG Masks:**
+  - Icons stored in `assets/icons/` and rendered via CSS `mask-image` must be strictly well-formed, valid XML SVGs without extra content or unclosed tags.
+  - Keep viewBox aspect ratio 1:1 (square) and ensure ~85-88% optical fill (matching Material Design 24x24 keylines) so all toolbar, button, and card icons have consistent visual weight.
+
+---
+
+## 6. Build, Release, & Store Information
+
+- **Chrome Web Store ID:** `jfbkeejcoccjomdfcnihgcohfmflaojn`
+- **Store URL:** `https://chromewebstore.google.com/detail/jfbkeejcoccjomdfcnihgcohfmflaojn`
+- **Reviews URL:** `https://chromewebstore.google.com/detail/jfbkeejcoccjomdfcnihgcohfmflaojn/reviews`
+- **Building a Release:**
+  - Run `npm run build` (or `.\build.ps1` in PowerShell).
+  - Always bump `"version"` in `manifest.json` before building a new release for Chrome Web Store.
+  - The build script outputs a clean `dist/GooglePhotos-TimTools-v<version>.zip` ready for upload to the Chrome Web Store Developer Dashboard.
+  - It automatically strips the local `"key"` property required only for unpacked development.

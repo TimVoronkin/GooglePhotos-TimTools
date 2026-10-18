@@ -1,6 +1,12 @@
 # <img src="assets/logo/logo-48.png" width="32" height="32" alt="Logo" align="center"> Google Photos Tim Tools
 
+[![Available in Chrome Web Store](https://img.shields.io/chrome-web-store/v/jfbkeejcoccjomdfcnihgcohfmflaojn?logo=googlechrome&logoColor=white&label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/jfbkeejcoccjomdfcnihgcohfmflaojn)
+
 A comprehensive, privacy-first Google Chrome extension that enhances [Google Photos](https://photos.google.com) with power utilities. It runs 100% locally in your browser - no third-party servers, no telemetry, and no external tracking.
+
+<p align="center">
+  <img src="assets/promo-materials/Key-art/marquee-tile.jpg" alt="Google Photos Tim Tools Key Art" width="100%">
+</p>
 
 ## 🧩 Modules & Features
 
@@ -80,19 +86,37 @@ Access the extension options page at any time by clicking the extension icon in 
 
 - **Unified Diagnostic Output:** Toggle detailed console logs formatted as `[GP-TimTools][ModuleName]` to troubleshoot extension behavior or monitor RPC network cycles. Completely silent when disabled.
 
+## 📸 Screenshots
+
+| | |
+|:---:|:---:|
+| <img src="assets/promo-materials/Screenshots/Screenshot-1.jpg" alt="Drag in Time & Smart Archiving" width="100%"> | <img src="assets/promo-materials/Screenshots/Screenshot-2.jpg" alt="Date Search & Calendar Picker" width="100%"> |
+| <img src="assets/promo-materials/Screenshots/Screenshot-3.jpg" alt="KML Geotag Route Export" width="100%"> | <img src="assets/promo-materials/Screenshots/Screenshot-4.jpg" alt="Extension Options & Custom Accent Colors" width="100%"> |
+
 ## 🛠️ Installation & Setup
+
+### 🌟 Chrome Web Store (Recommended)
+
+Install directly from the official Chrome Web Store for one-click setup and automatic updates:
+👉 [https://ChromeWebStore.Google.com/detail/jfbkeejcoccjomdfcnihgcohfmflaojn](https://chromewebstore.google.com/detail/jfbkeejcoccjomdfcnihgcohfmflaojn)
+
+---
+
+### 💻 Manual Installation (Developer / Unpacked Mode)
+
+If you wish to test or run the extension directly from source:
 
 1. **Clone or Download:**
    ```bash
    git clone https://github.com/TimVoronkin/GooglePhotos-TimTools.git
    ```
-   _(Or download the ZIP file and extract it to a convenient folder)._
+   *(Or download the ZIP archive and extract it).*
 2. **Open Extensions Page:**
-   Navigate to `chrome://extensions/` in Google Chrome (or any Chromium browser like Brave, Edge, Vivaldi).
+   Navigate to `chrome://extensions/` in Google Chrome (or any Chromium browser like Brave, Edge, Vivaldi, Opera).
 3. **Enable Developer Mode:**
    Toggle **Developer mode** in the top-right corner.
 4. **Load Extension:**
-   Click **Load unpacked** and select the folder containing `manifest.json`.
+   Click **Load unpacked** and select the root repository folder containing `manifest.json`.
 5. **Open Google Photos:**
    Navigate to [photos.google.com](https://photos.google.com) to start using the tools!
 
@@ -126,5 +150,6 @@ To generate a clean production-ready `.zip` archive for uploading to the [Chrome
 If Google Photos Tim Tools saves you time and enhances your photo library workflow, consider supporting ongoing development:
 
 - ☕ **Buy me a coffee:** [Ko-fi.com/Tim_Voronkin](https://ko-fi.com/tim_voronkin)
+- ⭐ **Rate & Write a Review:** [ChromeWebStore.Google.com/detail/jfbkeejcoccjomdfcnihgcohfmflaojn](https://chromewebstore.google.com/detail/jfbkeejcoccjomdfcnihgcohfmflaojn/reviews)
 - 🌟 **Star the repository:** [GitHub.com/TimVoronkin/GooglePhotos-TimTools](https://github.com/TimVoronkin/GooglePhotos-TimTools)
 - 🌐 **Contact the developer:** [TimVoronkin.github.io](https://timvoronkin.github.io/)
