@@ -39,6 +39,10 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         isDragging: false,
         draggedPhotoId: null,
         dragSourceIndex: -1,
+        activeDropTarget: null,
+        highlightedCards: [],
+        lastIndicatorCard: null,
+        lastIndicatorSide: null,
 
         init: function () {
             log('Initializing Drag in Time module (Modal Edition)...');
@@ -530,12 +534,6 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             let isVideo = false;
             let duration = '';
 
-            if (/^(video|відео|видео)\b/i.test(ariaLabel)) {
-                isVideo = true;
-                const durMatch = ariaLabel.match(/\b(\d{1,2}:\d{2}(?::\d{2})?)\b/);
-                if (durMatch) duration = durMatch[1];
-            }
-
             const durationEl = cardEl.querySelector('.KhS5De');
             if (durationEl) {
                 const text = durationEl.textContent.trim();
@@ -543,6 +541,14 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 if (durMatch) {
                     isVideo = true;
                     duration = durMatch[1];
+                }
+            }
+
+            if (/^(video|відео|видео)\b/i.test(ariaLabel) || cardEl.classList.contains('e37Orb')) {
+                isVideo = true;
+                if (!duration) {
+                    const durMatch = ariaLabel.match(/(?:duration|тривалість|длительность)\s*[:\-–]?\s*(\d{1,2}:\d{2}(?::\d{2})?)/i);
+                    if (durMatch) duration = durMatch[1];
                 }
             }
 
@@ -658,6 +664,13 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                 filtered = uniqueList.slice(start, end);
             }
 
+            // Ensure all selected photos are guaranteed to be in the filtered list
+            selectedPhotos.forEach(sp => {
+                if (!filtered.some(p => p.mediaKey === sp.mediaKey)) {
+                    filtered.push(sp);
+                }
+            });
+
             // Sort chronologically (earliest to latest or latest to earliest matching Google Photos order)
             // In Google Photos, photostream starts from newest at top down to oldest.
             filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -765,6 +778,10 @@ window.TimTools.Modules = window.TimTools.Modules || {};
                             if (fp) existingFingerprints.add(fp);
                             added++;
                         } else {
+                            const existing = this.photos.find(p => p.mediaKey === parsed.mediaKey || (fp && this.getThumbFingerprint(p.bgUrl) === fp));
+                            if (existing && !existing.dedupKey && parsed.dedupKey) {
+                                existing.dedupKey = parsed.dedupKey;
+                            }
                             log(`[API Context] Filtered duplicate item from Library: ${parsed.mediaKey}`);
                         }
                     }
@@ -803,53 +820,57 @@ window.TimTools.Modules = window.TimTools.Modules || {};
         },
 
         deduplicatePhotos: function () {
+            const result = [];
             const seenMediaKeys = new Set();
             const seenDedupKeys = new Set();
             const seenFingerprints = new Set();
-            const seenExactTimes = new Set();
-            const result = [];
 
             for (const p of this.photos) {
                 const mk = p.mediaKey && !p.mediaKey.startsWith('photo_') ? p.mediaKey : null;
                 const dk = p.dedupKey || null;
                 const fp = this.getThumbFingerprint(p.bgUrl);
-                const exactTime = p.timestamp ? p.timestamp.getTime() : null;
 
-                let isDuplicate = false;
+                let existingMatch = null;
 
-                if (mk && seenMediaKeys.has(mk)) isDuplicate = true;
-                if (!isDuplicate && dk && seenDedupKeys.has(dk)) isDuplicate = true;
-                if (!isDuplicate && fp && fp.length > 15 && seenFingerprints.has(fp)) isDuplicate = true;
-                if (!isDuplicate && exactTime && seenExactTimes.has(exactTime)) {
-                    const match = result.find(x => x.timestamp && x.timestamp.getTime() === exactTime);
-                    if (match && (
-                        (match.filename && p.filename && match.filename === p.filename) ||
-                        (match.duration && p.duration && match.duration === p.duration) ||
-                        (Math.abs((match.aspectRatio || 1) - (p.aspectRatio || 1)) < 0.02)
-                    )) {
-                        isDuplicate = true;
-                    }
+                if (mk && seenMediaKeys.has(mk)) {
+                    existingMatch = result.find(x => x.mediaKey === mk);
+                } else if (dk && seenDedupKeys.has(dk)) {
+                    existingMatch = result.find(x => x.dedupKey === dk);
+                } else if (fp && fp.length > 15 && seenFingerprints.has(fp)) {
+                    existingMatch = result.find(x => this.getThumbFingerprint(x.bgUrl) === fp);
+                } else {
+                    // Only compare unselected context photos against album/selected photos
+                    // Two selected items (or items with different mediaKeys/fingerprints) are distinct and never duplicates of each other
+                    existingMatch = result.find(x => {
+                        const oneIsContext = (p.isContextPhoto && !x.isContextPhoto) || (!p.isContextPhoto && x.isContextPhoto);
+                        if (!oneIsContext) return false;
+                        if (p.isVideo !== x.isVideo) return false;
+
+                        const timeA = p.timestamp ? p.timestamp.getTime() : null;
+                        const timeB = x.timestamp ? x.timestamp.getTime() : null;
+                        if (!timeA || !timeB || timeA !== timeB) return false;
+
+                        if (p.filename && x.filename && p.filename === x.filename) return true;
+                        if (p.isVideo && p.duration && x.duration && p.duration === x.duration) return true;
+                        return false;
+                    });
                 }
 
-                if (isDuplicate) {
-                    // Selected album photos always win over context photos
-                    if (p.isSelected) {
-                        const idx = result.findIndex(x => 
-                            (mk && x.mediaKey === mk) || 
-                            (fp && fp.length > 15 && this.getThumbFingerprint(x.bgUrl) === fp) ||
-                            (exactTime && x.timestamp && x.timestamp.getTime() === exactTime)
-                        );
-                        if (idx !== -1 && !result[idx].isSelected) {
-                            result[idx] = p;
-                        }
+                if (existingMatch) {
+                    // Preserve selection and merge metadata
+                    if (p.isSelected && !existingMatch.isSelected) {
+                        existingMatch.isSelected = true;
                     }
+                    if (!existingMatch.dedupKey && p.dedupKey) existingMatch.dedupKey = p.dedupKey;
+                    if (!existingMatch.filename && p.filename) existingMatch.filename = p.filename;
+                    if (!existingMatch.duration && p.duration) existingMatch.duration = p.duration;
+                    if (!existingMatch.element && p.element) existingMatch.element = p.element;
                     continue;
                 }
 
                 if (mk) seenMediaKeys.add(mk);
                 if (dk) seenDedupKeys.add(dk);
                 if (fp && fp.length > 15) seenFingerprints.add(fp);
-                if (exactTime) seenExactTimes.add(exactTime);
                 result.push(p);
             }
 
@@ -897,6 +918,8 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             this.isDragging = false;
             this.draggedPhotoId = null;
             this.dragSourceIndex = -1;
+            this.activeDropTarget = null;
+            this.cleanupDropIndicators();
             document.body.style.overflow = '';
         },
 
@@ -958,6 +981,69 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
             document.body.appendChild(overlay);
             this.modalOverlay = overlay;
+
+            // Wire seamless container-level drag & drop (zero dead zones between photo cards)
+            const streamContainer = overlay.querySelector('.gp-photos-stream-container');
+            if (streamContainer) {
+                let dragOverRaf = null;
+
+                streamContainer.addEventListener('dragover', (e) => {
+                    if (!this.isDragging) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+
+                    const clientX = e.clientX;
+                    const clientY = e.clientY;
+
+                    if (dragOverRaf) return;
+                    dragOverRaf = requestAnimationFrame(() => {
+                        dragOverRaf = null;
+                        if (!this.isDragging) return;
+
+                        const target = this.getDropTargetFromPoint(clientX, clientY);
+                        if (target && target.card) {
+                            if (target.mediaKey !== this.draggedPhotoId) {
+                                this.showDropIndicator(target.card, target.side);
+                                this.activeDropTarget = target;
+                            } else {
+                                this.cleanupDropIndicators();
+                                this.activeDropTarget = null;
+                            }
+                        }
+                    });
+                });
+
+                streamContainer.addEventListener('dragleave', (e) => {
+                    const related = e.relatedTarget;
+                    if (!streamContainer.contains(related)) {
+                        if (dragOverRaf) {
+                            cancelAnimationFrame(dragOverRaf);
+                            dragOverRaf = null;
+                        }
+                        this.cleanupDropIndicators();
+                        this.activeDropTarget = null;
+                    }
+                });
+
+                streamContainer.addEventListener('drop', (e) => {
+                    if (dragOverRaf) {
+                        cancelAnimationFrame(dragOverRaf);
+                        dragOverRaf = null;
+                    }
+                    if (!this.isDragging || !this.draggedPhotoId) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const target = this.activeDropTarget || this.getDropTargetFromPoint(e.clientX, e.clientY);
+                    if (target && target.mediaKey && target.mediaKey !== this.draggedPhotoId) {
+                        const dropBefore = target.side === 'left';
+                        log(`Dropped photo ${this.draggedPhotoId} onto target ${target.mediaKey} via container (${dropBefore ? 'before' : 'after'})`);
+                        this.executeModalDrop(this.draggedPhotoId, target.mediaKey, dropBefore);
+                    }
+                    this.cleanupDropIndicators();
+                    this.activeDropTarget = null;
+                });
+            }
 
             // Auto-scroll infinite stream loader: automatically fetches older photos at bottom and newer photos at top
             const modalBody = overlay.querySelector('.gp-drag-modal-body');
@@ -1334,10 +1420,12 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             const inputDate = manualBar.querySelector('.gp-input-date');
             if (!inputTime || !inputTz || !inputDate) return;
 
-            // Stop pointer/mouse events from propagating to prevent card drag
+            // Stop pointer/mouse/keyboard events from bubbling to prevent card drag and background hotkeys
             const stopProp = (e) => e.stopPropagation();
             manualBar.addEventListener('mousedown', stopProp);
             manualBar.addEventListener('pointerdown', stopProp);
+            manualBar.addEventListener('keydown', stopProp);
+            manualBar.addEventListener('keyup', stopProp);
 
             const openManualBar = (e) => {
                 if (e) e.stopPropagation();
@@ -1388,17 +1476,67 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
             timeDisplay.addEventListener('click', openManualBar);
 
-            // Commit on Enter, cancel on Escape
+            // Smart time formatter: automatically adds ':' after 2 and 4 digits (e.g. 195216 -> 19:52:16)
+            const formatTimeDigits = (val, isBackspace = false) => {
+                let digits = val.replace(/\D/g, '').slice(0, 6);
+                if (isBackspace && val.endsWith(':')) {
+                    digits = digits.slice(0, -1);
+                }
+                if (digits.length === 0) return '';
+                if (digits.length < 2) return digits;
+                if (digits.length === 2) return isBackspace ? digits : `${digits}:`;
+                if (digits.length === 3) return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+                if (digits.length === 4) return `${digits.slice(0, 2)}:${digits.slice(2)}${isBackspace ? '' : ':'}`;
+                return `${digits.slice(0, 2)}:${digits.slice(2, 4)}:${digits.slice(4)}`;
+            };
+
+            let lastInputType = '';
+            inputTime.addEventListener('beforeinput', (e) => {
+                lastInputType = e.inputType || '';
+                // Block any non-digit character from being entered directly
+                if (e.data && !/^\d+$/.test(e.data)) {
+                    e.preventDefault();
+                }
+            });
+
+            inputTime.addEventListener('input', (e) => {
+                const isBackspace = (e.inputType || lastInputType) === 'deleteContentBackward';
+                inputTime.value = formatTimeDigits(inputTime.value, isBackspace);
+            });
+
+            inputTime.addEventListener('paste', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const pasteText = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+                inputTime.value = formatTimeDigits(pasteText, false);
+            });
+
+            // Prevent arrow keys or typing from exiting fields or triggering Google Photos shortcuts
             [inputTime, inputTz, inputDate].forEach(input => {
                 input.addEventListener('keydown', (e) => {
+                    e.stopPropagation(); // Traps key events inside the modal input
+
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        e.stopPropagation();
                         commitChanges();
                     } else if (e.key === 'Escape') {
                         e.preventDefault();
-                        e.stopPropagation();
                         closeManualBar();
+                    } else if (input === inputTime) {
+                        // Allow navigation, deletion, clipboard
+                        if (
+                            e.key === 'Backspace' || e.key === 'Delete' ||
+                            e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+                            e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
+                            e.key === 'Home' || e.key === 'End' || e.key === 'Tab' ||
+                            e.ctrlKey || e.metaKey
+                        ) {
+                            return;
+                        }
+                        // Disallow non-digits
+                        if (!/^\d$/.test(e.key)) {
+                            e.preventDefault();
+                        }
                     }
                 });
             });
@@ -1475,22 +1613,21 @@ window.TimTools.Modules = window.TimTools.Modules || {};
             // CRITICAL: Both selected and unselected photos MUST receive drop events!
             card.addEventListener('dragover', (e) => {
                 e.preventDefault();
+                e.stopPropagation(); // Avoid triggering streamContainer redundantly
                 e.dataTransfer.dropEffect = 'move';
 
                 if (!this.isDragging || this.draggedPhotoId === photo.mediaKey) return;
 
                 const rect = card.getBoundingClientRect();
-                const midX = rect.left + rect.width / 2;
-                const isLeft = e.clientX < midX;
+                const isLeft = e.clientX < (rect.left + rect.width / 2);
+                const side = isLeft ? 'left' : 'right';
 
-                this.showDropIndicator(card, isLeft ? 'left' : 'right');
-            });
-
-            card.addEventListener('dragleave', (e) => {
-                const related = e.relatedTarget;
-                if (!card.contains(related)) {
-                    this.cleanupCardIndicator(card);
-                }
+                this.showDropIndicator(card, side);
+                this.activeDropTarget = {
+                    card: card,
+                    mediaKey: photo.mediaKey,
+                    side: side
+                };
             });
 
             card.addEventListener('drop', (e) => {
@@ -1499,40 +1636,152 @@ window.TimTools.Modules = window.TimTools.Modules || {};
 
                 if (!this.isDragging || !this.draggedPhotoId || this.draggedPhotoId === photo.mediaKey) {
                     this.cleanupDropIndicators();
+                    this.activeDropTarget = null;
                     return;
                 }
 
                 const rect = card.getBoundingClientRect();
-                const midX = rect.left + rect.width / 2;
-                const dropBefore = e.clientX < midX;
+                const dropBefore = e.clientX < (rect.left + rect.width / 2);
 
-                log(`Dropped photo ${this.draggedPhotoId} onto target ${photo.mediaKey} (${dropBefore ? 'before' : 'after'})`);
+                log(`Dropped photo ${this.draggedPhotoId} onto card ${photo.mediaKey} (${dropBefore ? 'before' : 'after'})`);
                 this.executeModalDrop(this.draggedPhotoId, photo.mediaKey, dropBefore);
                 this.cleanupDropIndicators();
+                this.activeDropTarget = null;
             });
+        },
+
+        getDropTargetFromPoint: function (clientX, clientY) {
+            if (!this.modalOverlay) return null;
+
+            // 1. Direct hit on a card or child of a card
+            let el = document.elementFromPoint(clientX, clientY);
+            let card = el ? el.closest('.gp-modal-photo-card:not(.is-dragging)') : null;
+            if (card) {
+                const rect = card.getBoundingClientRect();
+                const isLeft = clientX < (rect.left + rect.width / 2);
+                const mediaKey = card.getAttribute('data-media-key') || card.getAttribute('data-id');
+                return { card, mediaKey, side: isLeft ? 'left' : 'right' };
+            }
+
+            // 2. Fast offset probe for the 12px gap between cards (instant, zero full-DOM loops)
+            const probeOffsets = [
+                [-8, 0, 'right'], // probed left -> cursor is to the right of this card
+                [8, 0, 'left'],   // probed right -> cursor is to the left of this card
+                [-14, 0, 'right'],
+                [14, 0, 'left'],
+                [0, -8, 'right'],
+                [0, 8, 'left']
+            ];
+
+            for (let i = 0; i < probeOffsets.length; i++) {
+                const p = probeOffsets[i];
+                el = document.elementFromPoint(clientX + p[0], clientY + p[1]);
+                card = el ? el.closest('.gp-modal-photo-card:not(.is-dragging)') : null;
+                if (card) {
+                    const mediaKey = card.getAttribute('data-media-key') || card.getAttribute('data-id');
+                    return { card, mediaKey, side: p[2] };
+                }
+            }
+
+            // 3. Fallback only if all probes miss (cursor outside grid boundaries)
+            const allCards = this.modalOverlay.querySelectorAll('.gp-modal-photo-card:not(.is-dragging)');
+            if (allCards.length === 0) return null;
+
+            let closestCard = null;
+            let minDistance = Infinity;
+
+            for (let i = 0; i < allCards.length; i++) {
+                const c = allCards[i];
+                const rect = c.getBoundingClientRect();
+                const dx = Math.max(rect.left - clientX, 0, clientX - rect.right);
+                const dy = Math.max(rect.top - clientY, 0, clientY - rect.bottom);
+                const dist = dx * dx + dy * dy;
+
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestCard = c;
+                    if (dist < 400) break;
+                }
+            }
+
+            if (closestCard) {
+                const rect = closestCard.getBoundingClientRect();
+                const isLeft = clientX < (rect.left + rect.width / 2);
+                const mediaKey = closestCard.getAttribute('data-media-key') || closestCard.getAttribute('data-id');
+                return { card: closestCard, mediaKey, side: isLeft ? 'left' : 'right' };
+            }
+
+            return null;
         },
 
         showDropIndicator: function (card, side) {
+            if (!card) return;
+
+            // If already active on this card and side, avoid ANY DOM updates or recalculations!
+            if (card === this.lastIndicatorCard && side === this.lastIndicatorSide) {
+                return;
+            }
+
+            // Clean up ONLY previously highlighted cards (maximum 2 elements)
             this.cleanupDropIndicators();
+
+            this.lastIndicatorCard = card;
+            this.lastIndicatorSide = side;
+
+            const cardsToHighlight = [card];
+
             if (side === 'left') {
                 card.classList.add('drag-over-before');
+
+                // Find previous card in DOM directly without querySelectorAll
+                let prevCard = card.previousElementSibling;
+                while (prevCard && !prevCard.classList.contains('gp-modal-photo-card')) {
+                    prevCard = prevCard.previousElementSibling;
+                }
+                if (!prevCard) {
+                    const prevSection = card.closest('.gp-date-group-section')?.previousElementSibling;
+                    prevCard = prevSection ? prevSection.querySelector('.gp-modal-photo-card:last-child') : null;
+                }
+                if (prevCard && !prevCard.classList.contains('is-dragging')) {
+                    prevCard.classList.add('drag-over-after');
+                    cardsToHighlight.push(prevCard);
+                }
             } else {
                 card.classList.add('drag-over-after');
+
+                // Find next card in DOM directly without querySelectorAll
+                let nextCard = card.nextElementSibling;
+                while (nextCard && !nextCard.classList.contains('gp-modal-photo-card')) {
+                    nextCard = nextCard.nextElementSibling;
+                }
+                if (!nextCard) {
+                    const nextSection = card.closest('.gp-date-group-section')?.nextElementSibling;
+                    nextCard = nextSection ? nextSection.querySelector('.gp-modal-photo-card:first-child') : null;
+                }
+                if (nextCard && !nextCard.classList.contains('is-dragging')) {
+                    nextCard.classList.add('drag-over-before');
+                    cardsToHighlight.push(nextCard);
+                }
             }
+
+            this.highlightedCards = cardsToHighlight;
         },
 
         cleanupCardIndicator: function (card) {
-            card.classList.remove('drag-over-before');
-            card.classList.remove('drag-over-after');
+            if (!card) return;
+            card.classList.remove('drag-over-before', 'drag-over-after');
         },
 
         cleanupDropIndicators: function () {
-            if (!this.modalOverlay) return;
-            const cards = this.modalOverlay.querySelectorAll('.gp-modal-photo-card');
-            cards.forEach(c => {
-                c.classList.remove('drag-over-before');
-                c.classList.remove('drag-over-after');
-            });
+            if (this.highlightedCards && this.highlightedCards.length > 0) {
+                for (let i = 0; i < this.highlightedCards.length; i++) {
+                    const c = this.highlightedCards[i];
+                    c.classList.remove('drag-over-before', 'drag-over-after');
+                }
+                this.highlightedCards = [];
+            }
+            this.lastIndicatorCard = null;
+            this.lastIndicatorSide = null;
         },
 
         // --- Step 6: Execute Drop & Midpoint Timestamp Interpolation ---

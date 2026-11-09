@@ -290,7 +290,7 @@
 }
 
 .gp-modal-photo-card.is-draggable {
-    border: 2px solid #8ab4f8;
+    border: 2px solid var(--gp-active-accent, #8ab4f8);
     cursor: grab;
 }
 
@@ -312,40 +312,68 @@
     transform: scale(0.95);
 }
 
-/* --- Drop Indicator: Bold Vertical Insertion Bar between photos --- */
+/* --- Drop Indicator: Vibrant Accent Gradient & Edge Insertion Highlight --- */
+.gp-modal-photo-card.drag-over-before {
+    box-shadow: -6px 0 20px var(--gp-active-accent, #8ab4f8), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.gp-modal-photo-card.drag-over-after {
+    box-shadow: 6px 0 20px var(--gp-active-accent, #8ab4f8), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
 .gp-modal-photo-card.drag-over-before::before {
     content: '';
     position: absolute;
-    top: 4px;
-    bottom: 4px;
-    left: -9px;
-    width: 6px;
-    background: #8ab4f8;
-    border-radius: 4px;
-    box-shadow: 0 0 10px #8ab4f8, 0 0 20px rgba(138, 180, 248, 0.7);
-    z-index: 100;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 55%;
+    background: linear-gradient(to right,
+        color-mix(in srgb, var(--gp-active-accent, #8ab4f8) 80%, transparent) 0%,
+        color-mix(in srgb, var(--gp-active-accent, #8ab4f8) 50%, transparent) 22%,
+        color-mix(in srgb, var(--gp-active-accent, #8ab4f8) 20%, transparent) 55%,
+        transparent 100%
+    );
+    border-left: 5px solid var(--gp-active-accent, #8ab4f8);
+    border-top-left-radius: 18px;
+    border-bottom-left-radius: 18px;
+    box-shadow: inset 18px 0 24px -6px color-mix(in srgb, var(--gp-active-accent, #8ab4f8) 60%, transparent);
+    z-index: 50;
     pointer-events: none;
-    animation: gpPulseBar 0.8s ease-in-out infinite alternate;
+    animation: gpPulseGradient 0.8s ease-in-out infinite alternate;
 }
 
 .gp-modal-photo-card.drag-over-after::after {
     content: '';
     position: absolute;
-    top: 4px;
-    bottom: 4px;
-    right: -9px;
-    width: 6px;
-    background: #8ab4f8;
-    border-radius: 4px;
-    box-shadow: 0 0 10px #8ab4f8, 0 0 20px rgba(138, 180, 248, 0.7);
-    z-index: 100;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 55%;
+    background: linear-gradient(to left,
+        color-mix(in srgb, var(--gp-active-accent, #8ab4f8) 80%, transparent) 0%,
+        color-mix(in srgb, var(--gp-active-accent, #8ab4f8) 50%, transparent) 22%,
+        color-mix(in srgb, var(--gp-active-accent, #8ab4f8) 20%, transparent) 55%,
+        transparent 100%
+    );
+    border-right: 5px solid var(--gp-active-accent, #8ab4f8);
+    border-top-right-radius: 18px;
+    border-bottom-right-radius: 18px;
+    box-shadow: inset -18px 0 24px -6px color-mix(in srgb, var(--gp-active-accent, #8ab4f8) 60%, transparent);
+    z-index: 50;
     pointer-events: none;
-    animation: gpPulseBar 0.8s ease-in-out infinite alternate;
+    animation: gpPulseGradient 0.8s ease-in-out infinite alternate;
 }
 
-@keyframes gpPulseBar {
-    from { opacity: 0.85; transform: scaleY(0.96); }
-    to { opacity: 1; transform: scaleY(1); }
+@keyframes gpPulseGradient {
+    from {
+        opacity: 0.88;
+        filter: brightness(1);
+    }
+    to {
+        opacity: 1;
+        filter: brightness(1.25);
+    }
 }
 
 .gp-card-img {
@@ -843,6 +871,40 @@
 .gp-theme-light .gp-modal-photo-card {
     background: #e8eaed;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.gp-theme-light .gp-modal-photo-card.is-draggable {
+    border-color: var(--gp-active-accent, #1a73e8);
+}
+
+.gp-theme-light .gp-modal-photo-card.drag-over-before {
+    box-shadow: -6px 0 20px var(--gp-active-accent, #1a73e8), 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.gp-theme-light .gp-modal-photo-card.drag-over-after {
+    box-shadow: 6px 0 20px var(--gp-active-accent, #1a73e8), 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.gp-theme-light .gp-modal-photo-card.drag-over-before::before {
+    background: linear-gradient(to right,
+        color-mix(in srgb, var(--gp-active-accent, #1a73e8) 80%, transparent) 0%,
+        color-mix(in srgb, var(--gp-active-accent, #1a73e8) 50%, transparent) 22%,
+        color-mix(in srgb, var(--gp-active-accent, #1a73e8) 20%, transparent) 55%,
+        transparent 100%
+    );
+    border-left-color: var(--gp-active-accent, #1a73e8);
+    box-shadow: inset 18px 0 24px -6px color-mix(in srgb, var(--gp-active-accent, #1a73e8) 60%, transparent);
+}
+
+.gp-theme-light .gp-modal-photo-card.drag-over-after::after {
+    background: linear-gradient(to left,
+        color-mix(in srgb, var(--gp-active-accent, #1a73e8) 80%, transparent) 0%,
+        color-mix(in srgb, var(--gp-active-accent, #1a73e8) 50%, transparent) 22%,
+        color-mix(in srgb, var(--gp-active-accent, #1a73e8) 20%, transparent) 55%,
+        transparent 100%
+    );
+    border-right-color: var(--gp-active-accent, #1a73e8);
+    box-shadow: inset -18px 0 24px -6px color-mix(in srgb, var(--gp-active-accent, #1a73e8) 60%, transparent);
 }
 
 .gp-theme-light .gp-card-fallback-img {
